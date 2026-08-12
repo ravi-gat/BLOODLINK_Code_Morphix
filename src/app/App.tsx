@@ -1,4 +1,8 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
+import { useThemeStore } from "../stores/useThemeStore";
+import { useAuthStore } from "../stores/useAuthStore";
+import { getRoleDashboardPath } from "../stores/useAuthStore";
 import {
   Droplets,
   Search,
@@ -162,6 +166,35 @@ function StatCard({ icon: Icon, label, value, delta, color }: { icon: any; label
   );
 }
 
+// ─── Nav Auth Button ──────────────────────────────────────────────────────────
+
+function NavAuthButton() {
+  const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuthStore();
+
+  if (isAuthenticated && user) {
+    return (
+      <button
+        onClick={() => navigate(getRoleDashboardPath(user.role as any))}
+        className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors"
+      >
+        <Droplets size={14} />
+        My Dashboard
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => navigate("/login")}
+      className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors"
+    >
+      <Droplets size={14} />
+      Sign In
+    </button>
+  );
+}
+
 // ─── Nav ──────────────────────────────────────────────────────────────────────
 
 function Nav({ view, setView, dark, setDark }: { view: View; setView: (v: View) => void; dark: boolean; setDark: (d: boolean) => void }) {
@@ -203,10 +236,7 @@ function Nav({ view, setView, dark, setDark }: { view: View; setView: (v: View) 
           >
             {dark ? <Sun size={16} /> : <Moon size={16} />}
           </button>
-          <button className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors">
-            <Droplets size={14} />
-            Find Blood Now
-          </button>
+          <NavAuthButton />
           <button className="md:hidden w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted" onClick={() => setMenuOpen(!menuOpen)}>
             {menuOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
@@ -231,6 +261,7 @@ function Landing({ setView }: { setView: (v: View) => void }) {
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
   const [bloodGroup, setBloodGroup] = useState("");
   const [city, setCity] = useState("");
+  const navigate = useNavigate();
 
   return (
     <div className="bg-background">
@@ -257,14 +288,14 @@ function Landing({ setView }: { setView: (v: View) => void }) {
               </p>
               <div className="flex flex-wrap gap-3">
                 <button
-                  onClick={() => setView("patient")}
+                  onClick={() => navigate("/login")}
                   className="flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white text-red-700 font-semibold hover:bg-red-50 transition-colors shadow-lg"
                 >
                   <Search size={18} />
                   Find Blood Now
                 </button>
                 <button
-                  onClick={() => setView("donor")}
+                  onClick={() => navigate("/register")}
                   className="flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white/15 backdrop-blur-sm text-white font-semibold border border-white/30 hover:bg-white/25 transition-colors"
                 >
                   <Heart size={18} />
@@ -315,7 +346,7 @@ function Landing({ setView }: { setView: (v: View) => void }) {
                   </div>
                 </div>
                 <button
-                  onClick={() => setView("patient")}
+                  onClick={() => navigate("/login")}
                   className="w-full py-3 rounded-xl bg-white text-red-700 font-semibold flex items-center justify-center gap-2 hover:bg-red-50 transition-colors shadow-md mt-1"
                 >
                   <Search size={16} />
@@ -489,7 +520,7 @@ function Landing({ setView }: { setView: (v: View) => void }) {
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">Facing a Blood Emergency Right Now?</h2>
           <p className="text-red-200 mb-7">Submit an emergency request and get matched with a compatible donor in minutes — 24/7, 365 days a year.</p>
           <button
-            onClick={() => setView("patient")}
+            onClick={() => navigate("/login")}
             className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-white text-red-700 font-semibold text-lg hover:bg-red-50 transition-colors shadow-xl"
           >
             <AlertTriangle size={20} />
@@ -1227,11 +1258,11 @@ function AdminDashboard() {
   );
 }
 
-// ─── App Root ─────────────────────────────────────────────────────────────────
+// ─── App Root (Landing wrapper) ───────────────────────────────────────────────
 
 export default function App() {
   const [view, setView] = useState<View>("landing");
-  const [dark, setDark] = useState(false);
+  const { dark, setDark } = useThemeStore();
 
   return (
     <div className={dark ? "dark" : ""} style={{ fontFamily: "'Inter', sans-serif" }}>
