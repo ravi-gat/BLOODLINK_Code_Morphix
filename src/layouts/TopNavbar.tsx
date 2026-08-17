@@ -46,7 +46,7 @@ interface TopNavbarProps {
 export function TopNavbar({ onMobileMenuToggle, pageTitle }: TopNavbarProps) {
   const { user, logout } = useAuthStore();
   const { dark, toggleTheme } = useThemeStore();
-  const { getUserNotifications, getUnreadCount, markAsRead, markAllAsRead } = useNotificationStore();
+  const { getUserNotifications, getUnreadCount, markAsRead, markAllAsRead, fetchNotifications } = useNotificationStore();
   const navigate = useNavigate();
 
   const [notifOpen, setNotifOpen] = useState(false);
@@ -54,8 +54,18 @@ export function TopNavbar({ onMobileMenuToggle, pageTitle }: TopNavbarProps) {
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  const notifications = user ? getUserNotifications(user.id).slice(0, 8) : [];
-  const unreadCount = user ? getUnreadCount(user.id) : 0;
+  // Fetch notifications when user is authenticated
+  useEffect(() => {
+    if (user) {
+      void fetchNotifications();
+      // Poll every 30 seconds for new notifications
+      const interval = setInterval(() => void fetchNotifications(), 30_000);
+      return () => clearInterval(interval);
+    }
+  }, [user, fetchNotifications]);
+
+  const notifications = getUserNotifications().slice(0, 8);
+  const unreadCount = getUnreadCount();
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -126,7 +136,7 @@ export function TopNavbar({ onMobileMenuToggle, pageTitle }: TopNavbarProps) {
                 </div>
                 {unreadCount > 0 && user && (
                   <button
-                    onClick={() => markAllAsRead(user.id)}
+                    onClick={() => markAllAsRead()}
                     className="text-xs text-red-600 hover:underline font-medium flex items-center gap-1"
                   >
                     <Check size={12} /> Mark all read

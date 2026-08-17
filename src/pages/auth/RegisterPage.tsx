@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { Eye, EyeOff, Loader2, CheckCircle, Circle } from "lucide-react";
 import { useAuthStore, getRoleDashboardPath } from "../../stores/useAuthStore";
 import type { UserRole, BloodGroup } from "../../types";
@@ -61,7 +61,9 @@ function PasswordStrength({ password }: { password: string }) {
 
 export function RegisterPage() {
   const [step, setStep] = useState(1);
-  const [role, setRole] = useState<UserRole>("patient");
+  const location = useLocation();
+  const requestedRole = location.state?.role as UserRole | undefined;
+  const [role, setRole] = useState<UserRole>(requestedRole === "donor" ? "donor" : "patient");
   const [form, setForm] = useState({
     name: "", email: "", phone: "", city: "",
     bloodGroup: "" as BloodGroup | "",

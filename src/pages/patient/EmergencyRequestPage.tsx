@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { AlertTriangle, CheckCircle, Loader2, ChevronRight, ChevronLeft } from "lucide-react";
+import { toast } from "sonner";
 import { PageHeader } from "../../components/shared/PageHeader";
+import { patientApi } from "../../services/api";
+import { ApiError } from "../../services/api";
 import type { BloodGroup } from "../../types";
 
 const BLOOD_GROUPS: BloodGroup[] = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
@@ -30,6 +33,7 @@ export function EmergencyRequestPage() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [realRequestId, setRealRequestId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const set = (k: keyof FormData, v: string) => { setForm((f) => ({ ...f, [k]: v })); setError(""); };
@@ -55,9 +59,38 @@ export function EmergencyRequestPage() {
     const validationError = validateStep();
     if (validationError) { setError(validationError); return; }
     setLoading(true);
-    await new Promise((res) => setTimeout(res, 1500));
-    setLoading(false);
-    setSubmitted(true);
+    setError("");
+    try {
+      const result = await patientApi.createRequest({
+        blood_group: form.bloodGroup as string,
+        units_required: parseInt(form.units, 10),
+        urgency: form.urgency,
+        city: form.city,
+        hospital_name: form.hospital || undefined,
+        patient_name: form.patientName || undefined,
+        medical_notes: [
+          form.diagnosis && `Diagnosis: ${form.diagnosis}`,
+          form.ward && `Ward: ${form.ward}`,
+          form.doctor && `Doctor: ${form.doctor}`,
+          form.notes,
+        ]
+          .filter(Boolean)
+          .join(" | ") || undefined,
+        contact_number: form.contactPhone || undefined,
+      });
+      setLoading(false);
+      setSubmitted(true);
+      // Store the real request ID from the backend
+      setRealRequestId(result.id);
+      toast.success("Emergency request submitted successfully.");
+    } catch (err) {
+      setLoading(false);
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Failed to submit request. Please try again.");
+      }
+    }
   };
 
   if (submitted) {
@@ -87,7 +120,7 @@ export function EmergencyRequestPage() {
           <div className="pt-2 border-t border-border">
             <div className="text-xs text-muted-foreground">Request ID</div>
             <div className="font-mono text-sm font-semibold text-red-600">
-              REQ-{Date.now().toString().slice(-8)}
+              {realRequestId ? `REQ-${realRequestId.slice(-8).toUpperCase()}` : `REQ-${Date.now().toString().slice(-8)}`}
             </div>
           </div>
         </div>

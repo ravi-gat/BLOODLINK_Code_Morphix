@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Camera, CheckCircle, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { PageHeader } from "../../components/shared/PageHeader";
 import { Avatar } from "../../components/shared/Avatar";
 import { BloodTypePill } from "../../components/shared/BloodTypePill";
 import { VerifiedBadge, RoleBadge } from "../../components/shared/StatusBadge";
 import { useAuthStore } from "../../stores/useAuthStore";
+import { patientApi, donorApi, hospitalApi, bloodBankApi, ApiError } from "../../services/api";
 import type { UserRole, BloodGroup } from "../../types";
 
 const BASE_PATH: Record<UserRole, string> = {
@@ -32,14 +34,29 @@ export function ProfilePage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await new Promise((res) => setTimeout(res, 800));
-    if (user) {
-      const initials = form.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
-      setUser({ ...user, name: form.name, phone: form.phone, city: form.city, bloodGroup: form.bloodGroup as BloodGroup, initials });
+    try {
+      const role = user?.role as UserRole;
+      if (role === "patient") {
+        await patientApi.updateProfile({ city: form.city, blood_group: form.bloodGroup || undefined });
+      } else if (role === "donor") {
+        await donorApi.updateProfile({ city: form.city, blood_group: form.bloodGroup || undefined });
+      } else if (role === "hospital") {
+        await hospitalApi.updateProfile({ city: form.city });
+      } else if (role === "bloodbank") {
+        await bloodBankApi.updateProfile({ city: form.city });
+      }
+      if (user) {
+        const initials = form.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+        setUser({ ...user, name: form.name, phone: form.phone, city: form.city, bloodGroup: form.bloodGroup as BloodGroup, initials });
+      }
+      setSaved(true);
+      toast.success("Profile updated successfully.");
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to save profile.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
   };
 
   const basePath = user ? BASE_PATH[user.role as UserRole] : "";

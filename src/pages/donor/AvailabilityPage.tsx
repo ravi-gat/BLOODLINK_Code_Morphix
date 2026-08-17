@@ -1,18 +1,24 @@
 import { useState } from "react";
-import { Calendar, Clock, Plus, CheckCircle, X } from "lucide-react";
+import { Calendar, Clock, Plus } from "lucide-react";
+import { toast } from "sonner";
 import { PageHeader } from "../../components/shared/PageHeader";
 import { Toggle } from "../../components/shared/Toggle";
 import { StatusBadge } from "../../components/shared/StatusBadge";
-import { APPOINTMENTS } from "../../data/hospitals";
+import { useApi } from "../../hooks/useApi";
+import { donorApi, ApiError } from "../../services/api";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const TIMES = ["Morning (8–12)", "Afternoon (12–5)", "Evening (5–9)"];
 
 export function AvailabilityPage() {
-  const [available, setAvailable] = useState(true);
   const [selectedDays, setSelectedDays] = useState<string[]>(["Mon", "Wed", "Fri", "Sat"]);
   const [selectedTimes, setSelectedTimes] = useState<string[]>(["Morning (8–12)", "Afternoon (12–5)"]);
-  const [nextEligible] = useState("Jun 10, 2024");
+  const [toggling, setToggling] = useState(false);
+
+  const { data: profile, refetch } = useApi(() => donorApi.getProfile());
+
+  const available = profile?.availability ?? true;
+  const nextEligible = profile?.next_eligible_date ?? "—";
 
   const toggleDay = (d: string) =>
     setSelectedDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]);
@@ -20,7 +26,18 @@ export function AvailabilityPage() {
   const toggleTime = (t: string) =>
     setSelectedTimes((prev) => prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]);
 
-  const myAppointments = APPOINTMENTS.filter((a) => a.donorId === "d001");
+  const handleAvailabilityChange = async (val: boolean) => {
+    setToggling(true);
+    try {
+      await donorApi.setAvailability(val);
+      toast.success(val ? "You are now available to donate." : "Availability turned off.");
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to update.");
+    } finally {
+      setToggling(false);
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -39,7 +56,7 @@ export function AvailabilityPage() {
               {available ? "You are currently available to donate" : "You have marked yourself as unavailable"}
             </p>
           </div>
-          <Toggle checked={available} onChange={setAvailable} />
+          <Toggle checked={available} onChange={handleAvailabilityChange} />
         </div>
         <div className={`mt-4 p-3 rounded-xl text-sm flex items-center gap-2 ${
           available ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300" : "bg-muted text-muted-foreground"

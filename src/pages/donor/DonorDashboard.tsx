@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { useNavigate } from "react-router";
+import { toast } from "sonner";
 import {
   Heart, Bell, CheckCircle, Award, Activity, Calendar,
   ArrowRight, Droplets, MapPin, TrendingUp, Plus,
@@ -13,39 +13,49 @@ import { BloodTypePill } from "../../components/shared/BloodTypePill";
 import { Avatar } from "../../components/shared/Avatar";
 import { UrgencyBadge, StatusBadge } from "../../components/shared/StatusBadge";
 import { Toggle } from "../../components/shared/Toggle";
+import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
 import { useAuthStore } from "../../stores/useAuthStore";
-import { BLOOD_REQUESTS } from "../../data/requests";
-import { REWARD_TREND_DATA } from "../../data/charts";
+import { useApi } from "../../hooks/useApi";
+import { donorApi, ApiError } from "../../services/api";
+import type { BloodGroup, UrgencyLevel } from "../../types";
 
-const BADGES = [
-  { icon: "🩸", label: "First Drop" },
-  { icon: "🏆", label: "10 Lives" },
-  { icon: "⚡", label: "Emergency" },
-  { icon: "🌟", label: "Top Donor" },
-  { icon: "💪", label: "Consistent" },
-  { icon: "🔬", label: "Rare Type" },
-];
-
-const HISTORY = [
-  { date: "Mar 12, 2024", hospital: "AIIMS Delhi", type: "Whole Blood", status: "Completed" },
-  { date: "Nov 28, 2023", hospital: "Apollo Hospitals", type: "Platelet", status: "Completed" },
-  { date: "Aug 5, 2023", hospital: "Fortis Healthcare", type: "Whole Blood", status: "Completed" },
-  { date: "Apr 19, 2023", hospital: "Max Hospital", type: "Plasma", status: "Completed" },
-];
-
-const UPCOMING = [
-  { date: "Jun 10, 2024", time: "10:30 AM", hospital: "AIIMS Delhi", type: "Scheduled" },
-  { date: "Jun 18, 2024", time: "2:00 PM", hospital: "Apollo Hospitals", type: "Requested" },
+const REWARD_TREND: { month: string; points: number }[] = [
+  { month: "Mar", points: 100 }, { month: "Apr", points: 200 },
+  { month: "May", points: 350 }, { month: "Jun", points: 500 },
+  { month: "Jul", points: 650 }, { month: "Aug", points: 820 },
 ];
 
 export function DonorDashboard() {
   const { user } = useAuthStore();
-  const [available, setAvailable] = useState(true);
   const navigate = useNavigate();
 
-  const emergencyRequests = BLOOD_REQUESTS.filter(
-    (r) => r.urgency === "Critical" && r.status !== "Fulfilled" && r.status !== "Cancelled"
-  ).slice(0, 3);
+  const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useApi(
+    () => donorApi.getProfile()
+  );
+  const { data: requests, isLoading: reqLoading } = useApi(() => donorApi.getRequests());
+  const { data: donations, isLoading: donLoading } = useApi(() => donorApi.getDonations());
+  const { data: rewardsResp } = useApi(() => donorApi.getRewards());
+
+  const rewards = (rewardsResp as { data?: { points: number; level: string } } | null)?.data;
+  const emergencyRequests = requests?.filter(
+    (r) => r.urgency === "Critical" && r.status !== "COMPLETED" && r.status !== "CANCELLED"
+  ).slice(0, 3) ?? [];
+
+  const recentDonations = donations?.slice(0, 4) ?? [];
+  const rewardPoints = rewards?.points ?? profile?.reward_points ?? 0;
+  const rewardLevel = rewards?.level ?? "Bronze";
+
+  const handleAvailabilityToggle = async (val: boolean) => {
+    try {
+      await donorApi.setAvailability(val);
+      toast.success(val ? "You are now available to donate." : "Availability turned off.");
+      refetchProfile();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to update availability.");
+    }
+  };
+
+  if (profileLoading) return <LoadingSkeleton.SkeletonPage />;
 
   return (
     <div className="space-y-6">
@@ -64,34 +74,40 @@ export function DonorDashboard() {
         }
       />
 
-      {/* Welcome banner */}
+      {/* Banner */}
       <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-2xl p-6 text-white">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold mb-1">You're making a difference 💪</h2>
             <p className="text-red-200 text-sm">
-              You have saved <strong className="text-white">12 lives</strong> so far. Your{" "}
-              <strong className="text-white">{user?.bloodGroup || "O+"}</strong> blood type is in high demand right now.
+              You have completed{" "}
+              <strong className="text-white">{profile?.total_donations ?? 0} donation{(profile?.total_donations ?? 0) !== 1 ? "s" : ""}</strong>.{" "}
+              Your{" "}
+              <strong className="text-white">{profile?.blood_group ?? user?.bloodGroup ?? "blood type"}</strong> is in demand.
             </p>
           </div>
           <div className="hidden sm:block text-right flex-shrink-0 ml-4">
-            <div className="text-3xl font-extrabold font-mono">820</div>
-            <div className="text-red-200 text-sm">Reward Points</div>
+            <div className="text-3xl font-extrabold font-mono">{rewardPoints}</div>
+            <div className="text-red-200 text-sm">Reward Points · {rewardLevel}</div>
           </div>
         </div>
       </div>
 
       <div className="grid lg:grid-cols-4 gap-6">
-        {/* Sidebar profile card */}
+        {/* Profile card */}
         <div className="lg:col-span-1 space-y-4">
           <div className="bg-card rounded-2xl border border-border p-5 text-center">
-            <Avatar initials={user?.initials ?? "AM"} size="xl" />
+            <Avatar initials={user?.initials ?? "?"} size="xl" />
             <div className="font-semibold text-foreground mt-3">{user?.name}</div>
             <div className="text-sm text-muted-foreground mb-3">{user?.email}</div>
-            <BloodTypePill type={user?.bloodGroup ?? "O+"} size="lg" />
+            <BloodTypePill type={(profile?.blood_group ?? user?.bloodGroup ?? "O+") as BloodGroup} size="lg" />
             <div className="mt-4 bg-muted rounded-xl p-3 flex items-center justify-between">
               <span className="text-sm font-medium text-foreground">Available to Donate</span>
-              <Toggle checked={available} onChange={setAvailable} size="sm" />
+              <Toggle
+                checked={profile?.availability ?? true}
+                onChange={handleAvailabilityToggle}
+                size="sm"
+              />
             </div>
           </div>
 
@@ -99,39 +115,18 @@ export function DonorDashboard() {
             <h4 className="font-semibold text-foreground text-sm mb-4">Donation Status</h4>
             <div className="space-y-3 text-sm">
               {[
-                { label: "Last Donated", value: "Mar 12, 2024" },
-                { label: "Next Eligible", value: "Jun 10, 2024", highlight: true },
-                { label: "AI Health Score", value: "94 / 100", mono: true, highlight: true },
-              ].map(({ label, value, highlight, mono }) => (
+                { label: "Last Donated", value: profile?.last_donation_date ?? "—" },
+                { label: "Next Eligible", value: profile?.next_eligible_date ?? "—", highlight: true },
+                { label: "Health Status", value: profile?.health_status ?? "Unknown" },
+              ].map(({ label, value, highlight }) => (
                 <div key={label} className="flex justify-between">
                   <span className="text-muted-foreground">{label}</span>
-                  <span className={`font-medium ${highlight ? "text-green-600" : "text-foreground"} ${mono ? "font-mono" : ""}`}>
+                  <span className={`font-medium ${highlight ? "text-green-600" : "text-foreground"}`}>
                     {value}
                   </span>
                 </div>
               ))}
-              <div className="w-full bg-muted rounded-full h-2 mt-1">
-                <div className="bg-green-500 h-2 rounded-full" style={{ width: "94%" }} />
-              </div>
             </div>
-          </div>
-
-          <div className="bg-card rounded-2xl border border-border p-5">
-            <h4 className="font-semibold text-foreground text-sm mb-3">Achievement Badges</h4>
-            <div className="grid grid-cols-3 gap-2">
-              {BADGES.map((b) => (
-                <div key={b.label} className="flex flex-col items-center gap-1 p-2 rounded-xl bg-muted">
-                  <span className="text-xl">{b.icon}</span>
-                  <span className="text-xs text-muted-foreground text-center leading-tight">{b.label}</span>
-                </div>
-              ))}
-            </div>
-            <button
-              onClick={() => navigate("/donor/rewards")}
-              className="mt-3 w-full text-center text-xs text-red-600 hover:underline font-medium flex items-center justify-center gap-1"
-            >
-              View all rewards <ArrowRight size={11} />
-            </button>
           </div>
         </div>
 
@@ -139,41 +134,52 @@ export function DonorDashboard() {
         <div className="lg:col-span-3 space-y-6">
           {/* Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <StatCard icon={Heart} label="Lives Saved" value="12" color="#E53935" />
-            <StatCard icon={Bell} label="Requests Received" value="34" color="#1565C0" />
-            <StatCard icon={CheckCircle} label="Requests Accepted" value="12" color="#43A047" />
-            <StatCard icon={Award} label="Reward Points" value="820" color="#F9A825" />
+            <StatCard icon={Heart} label="Total Donations" value={String(profile?.total_donations ?? 0)} color="#E53935" />
+            <StatCard icon={Bell} label="Open Requests" value={String(requests?.length ?? 0)} color="#1565C0" />
+            <StatCard icon={CheckCircle} label="Donations Done" value={String(profile?.total_donations ?? 0)} color="#43A047" />
+            <StatCard icon={Award} label="Reward Points" value={String(rewardPoints)} color="#F9A825" />
           </div>
 
           {/* Emergency requests */}
-          <div className="bg-card rounded-2xl border border-border p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-foreground">Nearby Emergency Requests</h3>
-              <StatusBadge text={`${emergencyRequests.length} Active`} color="#E53935" />
-            </div>
-            <div className="space-y-3">
-              {emergencyRequests.map((r) => (
-                <div key={r.id} className="flex items-center gap-4 p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors">
-                  <BloodTypePill type={r.bloodGroup} />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-foreground text-sm">{r.hospital}</div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-1">
-                      <MapPin size={10} /> {r.city} · {r.units} units needed
+          {reqLoading ? (
+            <LoadingSkeleton.SkeletonCard />
+          ) : (
+            <div className="bg-card rounded-2xl border border-border p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-foreground">Nearby Emergency Requests</h3>
+                <StatusBadge
+                  text={`${emergencyRequests.length} Critical`}
+                  color={emergencyRequests.length > 0 ? "#E53935" : "#6B7280"}
+                />
+              </div>
+              {emergencyRequests.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No critical requests at this time.</p>
+              ) : (
+                <div className="space-y-3">
+                  {emergencyRequests.map((r) => (
+                    <div key={r.id} className="flex items-center gap-4 p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors">
+                      <BloodTypePill type={r.blood_group as BloodGroup} />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-foreground text-sm">{r.hospital_name || r.city}</div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-1">
+                          <MapPin size={10} /> {r.city} · {r.units_required} unit{r.units_required > 1 ? "s" : ""} needed
+                        </div>
+                      </div>
+                      <UrgencyBadge urgency={r.urgency as UrgencyLevel} />
+                      <button
+                        onClick={() => navigate("/donor/requests")}
+                        className="px-3.5 py-1.5 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 transition-colors flex-shrink-0"
+                      >
+                        Respond
+                      </button>
                     </div>
-                  </div>
-                  <UrgencyBadge urgency={r.urgency} />
-                  <button
-                    onClick={() => navigate("/donor/requests")}
-                    className="px-3.5 py-1.5 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 transition-colors flex-shrink-0"
-                  >
-                    Respond
-                  </button>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          </div>
+          )}
 
-          {/* History + Schedule */}
+          {/* Donation history */}
           <div className="grid sm:grid-cols-2 gap-6">
             <div className="bg-card rounded-2xl border border-border p-6">
               <div className="flex items-center justify-between mb-4">
@@ -182,56 +188,56 @@ export function DonorDashboard() {
                   View all <ArrowRight size={11} />
                 </button>
               </div>
-              <div className="space-y-3">
-                {HISTORY.map((d) => (
-                  <div key={d.date} className="flex items-center gap-3 text-sm">
-                    <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-foreground truncate">{d.hospital}</div>
-                      <div className="text-xs text-muted-foreground">{d.date} · {d.type}</div>
+              {donLoading ? (
+                <LoadingSkeleton.SkeletonCard />
+              ) : recentDonations.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No donations recorded yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {recentDonations.map((d) => (
+                    <div key={d.id} className="flex items-center gap-3 text-sm">
+                      <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-foreground truncate">
+                          {d.hospital_name || d.blood_bank_name || "Unknown location"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">{d.donation_date} · {d.component_type}</div>
+                      </div>
+                      <StatusBadge text={d.status} color={d.status === "COMPLETED" ? "#43A047" : "#F9A825"} />
                     </div>
-                    <StatusBadge text={d.status} color="#43A047" />
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="bg-card rounded-2xl border border-border p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-foreground">Upcoming Schedule</h3>
-                <button onClick={() => navigate("/donor/availability")} className="text-xs text-red-600 hover:underline font-medium flex items-center gap-1">
-                  Manage <ArrowRight size={11} />
+                <h3 className="font-semibold text-foreground">Reward Progress</h3>
+                <button onClick={() => navigate("/donor/rewards")} className="text-xs text-red-600 hover:underline font-medium flex items-center gap-1">
+                  Details <ArrowRight size={11} />
                 </button>
               </div>
-              <div className="space-y-3">
-                {UPCOMING.map((s) => (
-                  <div key={s.date} className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Calendar size={13} className="text-blue-600" />
-                      <span className="text-sm font-medium text-blue-800 dark:text-blue-200">{s.date} · {s.time}</span>
-                    </div>
-                    <div className="text-xs text-blue-600 dark:text-blue-300 mb-1.5">{s.hospital}</div>
-                    <StatusBadge text={s.type} color="#1565C0" />
-                  </div>
-                ))}
-                <button
-                  onClick={() => navigate("/donor/availability")}
-                  className="w-full py-2 rounded-xl border border-dashed border-border text-sm text-muted-foreground hover:border-red-300 hover:text-red-600 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Plus size={14} /> Schedule Donation
-                </button>
+              <div className="text-center mb-4">
+                <div className="text-4xl font-extrabold font-mono text-yellow-500">{rewardPoints}</div>
+                <div className="text-sm text-muted-foreground mt-1">points · {rewardLevel} tier</div>
               </div>
+              <button
+                onClick={() => navigate("/donor/availability")}
+                className="w-full py-2 rounded-xl border border-dashed border-border text-sm text-muted-foreground hover:border-red-300 hover:text-red-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <Plus size={14} /> Schedule Donation
+              </button>
             </div>
           </div>
 
-          {/* Reward chart */}
+          {/* Reward trend chart */}
           <div className="bg-card rounded-2xl border border-border p-6">
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp size={16} className="text-yellow-500" />
-              <h3 className="font-semibold text-foreground">Reward Points Trend</h3>
+              <h3 className="font-semibold text-foreground">Reward Points Trend (Demo)</h3>
             </div>
             <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={REWARD_TREND_DATA}>
+              <AreaChart data={REWARD_TREND}>
                 <defs>
                   <linearGradient id="rwGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#F9A825" stopOpacity={0.2} />

@@ -185,13 +185,10 @@ function NavAuthButton() {
   }
 
   return (
-    <button
-      onClick={() => navigate("/login")}
-      className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors"
-    >
-      <Droplets size={14} />
-      Sign In
-    </button>
+    <div className="hidden sm:flex items-center gap-2">
+      <button onClick={() => navigate("/login")} className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">Sign In</button>
+      <button onClick={() => navigate("/register")} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors"><Droplets size={14} /> Register</button>
+    </div>
   );
 }
 
@@ -199,18 +196,22 @@ function NavAuthButton() {
 
 function Nav({ view, setView, dark, setDark }: { view: View; setView: (v: View) => void; dark: boolean; setDark: (d: boolean) => void }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const navLinks: { label: string; v: View }[] = [
-    { label: "Home", v: "landing" },
-    { label: "Donor", v: "donor" },
-    { label: "Patient", v: "patient" },
-    { label: "Hospital", v: "hospital" },
-    { label: "Admin", v: "admin" },
-  ];
+  const navigate = useNavigate();
+  const { isAuthenticated, user, logout } = useAuthStore();
+  const roleLinks: Record<string, { label: string; path: string }[]> = {
+    patient: [{ label: "Dashboard", path: "/patient/dashboard" }, { label: "Search Blood", path: "/patient/search" }, { label: "Requests", path: "/patient/history" }, { label: "Notifications", path: "/patient/notifications" }, { label: "Profile", path: "/patient/profile" }],
+    donor: [{ label: "Dashboard", path: "/donor/dashboard" }, { label: "Requests", path: "/donor/requests" }, { label: "Donations", path: "/donor/history" }, { label: "Notifications", path: "/donor/notifications" }, { label: "Profile", path: "/donor/profile" }],
+    hospital: [{ label: "Dashboard", path: "/hospital/dashboard" }, { label: "Blood Requests", path: "/hospital/inventory" }, { label: "Emergency Requests", path: "/hospital/emergency" }, { label: "Patients", path: "/hospital/patients" }, { label: "Notifications", path: "/hospital/notifications" }],
+    bloodbank: [{ label: "Dashboard", path: "/bloodbank/dashboard" }, { label: "Inventory", path: "/bloodbank/inventory" }, { label: "Blood Requests", path: "/bloodbank/requests" }, { label: "Donations", path: "/bloodbank/collection" }, { label: "Notifications", path: "/bloodbank/notifications" }],
+    admin: [{ label: "Dashboard", path: "/admin/dashboard" }, { label: "Users", path: "/admin/users" }, { label: "Donors", path: "/admin/donors" }, { label: "Hospitals", path: "/admin/hospitals" }, { label: "Blood Banks", path: "/admin/bloodbanks" }, { label: "Reports", path: "/admin/reports" }],
+  };
+  const navLinks = isAuthenticated && user ? roleLinks[user.role] : [{ label: "Home", path: "/" }];
+  const goHome = () => { setView("landing"); navigate("/"); };
 
   return (
     <nav className="sticky top-0 z-50 bg-card/90 backdrop-blur-md border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-        <button onClick={() => setView("landing")} className="flex items-center gap-2.5 flex-shrink-0">
+        <button onClick={goHome} className="flex items-center gap-2.5 flex-shrink-0">
           <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center">
             <Droplets size={18} className="text-white" />
           </div>
@@ -218,11 +219,11 @@ function Nav({ view, setView, dark, setDark }: { view: View; setView: (v: View) 
         </button>
 
         <div className="hidden md:flex items-center gap-1">
-          {navLinks.map(({ label, v }) => (
+          {navLinks.map(({ label, path }) => (
             <button
-              key={v}
-              onClick={() => setView(v)}
-              className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${view === v ? "bg-red-50 text-red-600 dark:bg-red-900/20" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
+              key={path}
+              onClick={() => path === "/" ? goHome() : navigate(path)}
+              className="px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors text-muted-foreground hover:text-foreground hover:bg-muted"
             >
               {label}
             </button>
@@ -237,6 +238,7 @@ function Nav({ view, setView, dark, setDark }: { view: View; setView: (v: View) 
             {dark ? <Sun size={16} /> : <Moon size={16} />}
           </button>
           <NavAuthButton />
+          {isAuthenticated && user && <button onClick={() => { logout(); goHome(); }} className="hidden sm:flex px-3 py-2 text-sm font-medium text-muted-foreground hover:text-red-600">Logout</button>}
           <button className="md:hidden w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted" onClick={() => setMenuOpen(!menuOpen)}>
             {menuOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
@@ -244,11 +246,13 @@ function Nav({ view, setView, dark, setDark }: { view: View; setView: (v: View) 
       </div>
       {menuOpen && (
         <div className="md:hidden border-t border-border bg-card px-4 py-3 flex flex-col gap-1">
-          {navLinks.map(({ label, v }) => (
-            <button key={v} onClick={() => { setView(v); setMenuOpen(false); }} className={`px-3 py-2 rounded-lg text-sm font-medium text-left transition-colors ${view === v ? "bg-red-50 text-red-600" : "text-muted-foreground hover:bg-muted"}`}>
+          {navLinks.map(({ label, path }) => (
+            <button key={path} onClick={() => { path === "/" ? goHome() : navigate(path); setMenuOpen(false); }} className="px-3 py-2 rounded-lg text-sm font-medium text-left transition-colors text-muted-foreground hover:bg-muted">
               {label}
             </button>
           ))}
+          {!isAuthenticated && <><button onClick={() => navigate("/login")} className="px-3 py-2 text-left text-sm font-medium text-muted-foreground">Sign In</button><button onClick={() => navigate("/register")} className="px-3 py-2 text-left text-sm font-medium text-muted-foreground">Register</button></>}
+          {isAuthenticated && <button onClick={() => { logout(); goHome(); }} className="px-3 py-2 text-left text-sm font-medium text-red-600">Logout</button>}
         </div>
       )}
     </nav>
@@ -295,7 +299,7 @@ function Landing({ setView }: { setView: (v: View) => void }) {
                   Find Blood Now
                 </button>
                 <button
-                  onClick={() => navigate("/register")}
+                  onClick={() => navigate("/register", { state: { role: "donor" } })}
                   className="flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white/15 backdrop-blur-sm text-white font-semibold border border-white/30 hover:bg-white/25 transition-colors"
                 >
                   <Heart size={18} />

@@ -1,0 +1,13 @@
+
+> @ravi/my-make-file@0.0.1 dev
+> vite --host 127.0.0.1
+
+
+  [32m[1mVITE[22m v6.3.5[39m  [2mready in [0m[1m1087[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m5173[22m/[39m
+[2m8:21:51 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/routes/ProtectedRoute.tsx, /src/styles/index.css, /src/layouts/DashboardLayout.tsx, /src/app/App.tsx, /src/pages/shared/ProfilePage.tsx, /src/pages/hospital/HospitalDashboard.tsx, /src/pages/shared/NotFoundPage.tsx, /src/pages/shared/NotificationsPage.tsx, /src/pages/donor/DonorDashboard.tsx, /src/pages/auth/LoginPage.tsx, /src/pages/bloodbank/BloodBankDashboard.tsx, /src/pages/patient/PatientDashboard.tsx, /src/pages/shared/SettingsPage.tsx, /src/pages/auth/RegisterPage.tsx, /src/layouts/TopNavbar.tsx, /src/layouts/Sidebar.tsx[22m
+[2m8:21:51 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/main.tsx[22m
+[2m8:21:52 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/App.tsx, /src/styles/index.css[22m
+[2m8:22:47 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/app/App.tsx, /src/styles/index.css[22m
+[2m8:22:47 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/auth/RegisterPage.tsx, /src/styles/index.css[22m

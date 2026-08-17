@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate } from "react-router";
 import {
   AlertTriangle, Search, MapPin, Heart, Activity, Bell,
@@ -14,16 +13,37 @@ import { StatCard } from "../../components/shared/StatCard";
 import { BloodTypePill } from "../../components/shared/BloodTypePill";
 import { Avatar } from "../../components/shared/Avatar";
 import { UrgencyBadge, RequestStatusBadge } from "../../components/shared/StatusBadge";
+import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
 import { useAuthStore } from "../../stores/useAuthStore";
-import { BLOOD_REQUESTS } from "../../data/requests";
-import { DONORS } from "../../data/donors";
-import { MONTHLY_DATA } from "../../data/charts";
+import { useApi } from "../../hooks/useApi";
+import { patientApi } from "../../services/api";
+import type { BloodGroup, UrgencyLevel, RequestStatus } from "../../types";
+
+// Static chart data — represents platform-wide activity (demo data)
+const MONTHLY_DATA = [
+  { month: "Mar", requests: 34 }, { month: "Apr", requests: 38 },
+  { month: "May", requests: 52 }, { month: "Jun", requests: 47 },
+  { month: "Jul", requests: 61 }, { month: "Aug", requests: 55 },
+];
 
 export function PatientDashboard() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const myRequests = BLOOD_REQUESTS.slice(0, 3);
-  const nearbyDonors = DONORS.filter((d) => d.available).slice(0, 3);
+
+  const { data: myRequests, isLoading: reqLoading } = useApi(() => patientApi.getMyRequests());
+  const { data: nearbyDonors, isLoading: donorLoading } = useApi(
+    () => patientApi.getNearbyDonors(),
+  );
+
+  const recentRequests = myRequests?.slice(0, 3) ?? [];
+  const availableDonors = nearbyDonors?.filter((d) => d.availability).slice(0, 3) ?? [];
+
+  const totalRequests = myRequests?.length ?? 0;
+  const fulfilled = myRequests?.filter((r) => r.status === "COMPLETED").length ?? 0;
+  const pending = myRequests?.filter((r) => r.status === "PENDING" || r.status === "MATCHING").length ?? 0;
+  const inProgress = myRequests?.filter((r) =>
+    r.status === "ACCEPTED" || r.status === "IN_PROGRESS" || r.status === "DONOR_FOUND"
+  ).length ?? 0;
 
   return (
     <div className="space-y-6">
@@ -50,7 +70,7 @@ export function PatientDashboard() {
           </div>
           <div>
             <div className="font-semibold">Need blood urgently?</div>
-            <div className="text-red-200 text-sm">Submit an emergency request — AI alerts matching donors instantly.</div>
+            <div className="text-red-200 text-sm">Submit an emergency request — our system alerts matching donors immediately.</div>
           </div>
         </div>
         <button
@@ -63,10 +83,10 @@ export function PatientDashboard() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Heart} label="Total Requests" value="4" delta="+1 this week" color="#E53935" />
-        <StatCard icon={CheckCircle} label="Fulfilled" value="2" delta="50% success" color="#43A047" />
-        <StatCard icon={Clock} label="Pending" value="1" delta="Awaiting match" color="#F9A825" deltaPositive={false} />
-        <StatCard icon={Activity} label="In Progress" value="1" delta="Active now" color="#1565C0" />
+        <StatCard icon={Heart} label="Total Requests" value={String(totalRequests)} color="#E53935" />
+        <StatCard icon={CheckCircle} label="Fulfilled" value={String(fulfilled)} color="#43A047" />
+        <StatCard icon={Clock} label="Pending" value={String(pending)} deltaPositive={false} color="#F9A825" />
+        <StatCard icon={Activity} label="In Progress" value={String(inProgress)} color="#1565C0" />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -81,21 +101,34 @@ export function PatientDashboard() {
               View all <ArrowRight size={13} />
             </button>
           </div>
-          <div className="space-y-3">
-            {myRequests.map((req) => (
-              <div key={req.id} className="flex items-center gap-4 p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors">
-                <BloodTypePill type={req.bloodGroup} />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-foreground text-sm truncate">{req.hospital}</div>
-                  <div className="text-xs text-muted-foreground">{req.units} units · {req.city}</div>
+          {reqLoading ? (
+            <LoadingSkeleton.SkeletonPage />
+          ) : recentRequests.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground text-sm">
+              No requests yet.{" "}
+              <button onClick={() => navigate("/patient/emergency")} className="text-red-600 underline">
+                Create your first one
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recentRequests.map((req) => (
+                <div key={req.id} className="flex items-center gap-4 p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors">
+                  <BloodTypePill type={req.blood_group as BloodGroup} />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-foreground text-sm truncate">
+                      {req.hospital_name || req.city}
+                    </div>
+                    <div className="text-xs text-muted-foreground">{req.units_required} units · {req.city}</div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1.5">
+                    <UrgencyBadge urgency={req.urgency as UrgencyLevel} />
+                    <RequestStatusBadge status={req.status as RequestStatus} />
+                  </div>
                 </div>
-                <div className="flex flex-col items-end gap-1.5">
-                  <UrgencyBadge urgency={req.urgency} />
-                  <RequestStatusBadge status={req.status} />
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
           <button
             onClick={() => navigate("/patient/emergency")}
             className="mt-4 w-full py-2.5 rounded-xl border border-dashed border-border text-sm text-muted-foreground hover:border-red-300 hover:text-red-600 transition-colors flex items-center justify-center gap-2"
@@ -104,31 +137,37 @@ export function PatientDashboard() {
           </button>
         </div>
 
-        {/* AI Recommendation */}
+        {/* Sidebar */}
         <div className="space-y-4">
           <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-5 text-white">
             <div className="flex items-center gap-2 mb-3">
               <Zap size={16} className="text-yellow-300" />
-              <span className="font-semibold text-sm">AI Recommendation</span>
+              <span className="font-semibold text-sm">Nearby Donors</span>
             </div>
-            <p className="text-blue-200 text-xs leading-relaxed mb-4">
-              Based on your O+ request, 3 high-compatibility donors are available within 5 km right now.
-            </p>
-            <div className="space-y-2">
-              {nearbyDonors.map((d, i) => (
-                <div key={d.id} className="flex items-center gap-2.5 bg-white/10 rounded-xl p-2.5">
-                  <span className="text-xs font-bold text-blue-200">#{i + 1}</span>
-                  <Avatar initials={d.initials} size="sm" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-white text-xs font-medium truncate">{d.name}</div>
-                    <div className="text-blue-300 text-xs">{d.distance}</div>
-                  </div>
-                  <span className="text-green-300 text-xs font-mono font-semibold">
-                    {98 - i * 3}%
-                  </span>
+            {donorLoading ? (
+              <div className="text-blue-200 text-xs">Loading donors...</div>
+            ) : availableDonors.length === 0 ? (
+              <p className="text-blue-200 text-xs">No available donors found in your city.</p>
+            ) : (
+              <>
+                <p className="text-blue-200 text-xs leading-relaxed mb-4">
+                  {availableDonors.length} compatible donor{availableDonors.length !== 1 ? "s" : ""} available now.
+                </p>
+                <div className="space-y-2">
+                  {availableDonors.map((d, i) => (
+                    <div key={d.id} className="flex items-center gap-2.5 bg-white/10 rounded-xl p-2.5">
+                      <span className="text-xs font-bold text-blue-200">#{i + 1}</span>
+                      <Avatar initials={(d.name ?? "?")[0] + (d.name?.split(" ")[1]?.[0] ?? "")} size="sm" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-white text-xs font-medium truncate">{d.name ?? "Donor"}</div>
+                        <div className="text-blue-300 text-xs">{d.city}</div>
+                      </div>
+                      <BloodTypePill type={d.blood_group as BloodGroup ?? "O+"} size="sm" />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </>
+            )}
             <button
               onClick={() => navigate("/patient/search")}
               className="mt-3 w-full py-2 rounded-lg bg-white/20 text-white text-xs font-medium hover:bg-white/30 transition-colors"
@@ -165,58 +204,59 @@ export function PatientDashboard() {
         </div>
       </div>
 
-      {/* Nearby Donors Preview */}
-      <div className="bg-card rounded-2xl border border-border p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-foreground">Nearby Available Donors</h3>
-          <button onClick={() => navigate("/patient/nearby")} className="text-sm text-red-600 hover:underline font-medium flex items-center gap-1">
-            View map <ArrowRight size={13} />
-          </button>
-        </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {nearbyDonors.map((d) => (
-            <div key={d.id} className="bg-muted/50 rounded-xl p-4 hover:bg-muted transition-colors">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <Avatar initials={d.initials} size="md" />
-                  <div>
-                    <div className="font-medium text-foreground text-sm">{d.name}</div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-1">
-                      <MapPin size={10} />{d.distance}
+      {/* Nearby Donors */}
+      {availableDonors.length > 0 && (
+        <div className="bg-card rounded-2xl border border-border p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-foreground">Nearby Available Donors</h3>
+            <button onClick={() => navigate("/patient/nearby")} className="text-sm text-red-600 hover:underline font-medium flex items-center gap-1">
+              View all <ArrowRight size={13} />
+            </button>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {availableDonors.map((d) => (
+              <div key={d.id} className="bg-muted/50 rounded-xl p-4 hover:bg-muted transition-colors">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar initials={(d.name ?? "?")[0] + (d.name?.split(" ")[1]?.[0] ?? "")} size="md" />
+                    <div>
+                      <div className="font-medium text-foreground text-sm">{d.name ?? "Donor"}</div>
+                      <div className="text-xs text-muted-foreground flex items-center gap-1">
+                        <MapPin size={10} />{d.city}
+                      </div>
                     </div>
                   </div>
+                  <BloodTypePill type={d.blood_group as BloodGroup ?? "O+"} />
                 </div>
-                <BloodTypePill type={d.bloodGroup} />
+                <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
+                  <Heart size={11} className="text-red-400" />
+                  {d.total_donations} donation{d.total_donations !== 1 ? "s" : ""}
+                </div>
+                <div className="flex items-center gap-1 mb-3">
+                  <Circle size={8} fill="#43A047" className="text-green-500" />
+                  <span className="text-xs font-medium text-green-600">Available Now</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {d.blood_group && (
+                    <a href={`tel:`} className="flex flex-col items-center gap-1 py-2 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 transition-colors text-xs font-medium">
+                      <Phone size={12} />Call
+                    </a>
+                  )}
+                  <button className="flex flex-col items-center gap-1 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors text-xs font-medium col-span-1">
+                    <Heart size={12} />Request
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
-                <Star size={11} fill="#F9A825" className="text-yellow-400" />
-                {d.rating} · {d.totalDonations} donations
-              </div>
-              <div className="flex items-center gap-1 mb-3">
-                <Circle size={8} fill="#43A047" className="text-green-500" />
-                <span className="text-xs font-medium text-green-600">Available Now</span>
-              </div>
-              <div className="grid grid-cols-3 gap-1.5">
-                <button className="flex flex-col items-center gap-1 py-2 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 transition-colors text-xs font-medium">
-                  <Phone size={12} />Call
-                </button>
-                <button className="flex flex-col items-center gap-1 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors text-xs font-medium">
-                  <MessageCircle size={12} />Chat
-                </button>
-                <button className="flex flex-col items-center gap-1 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors text-xs font-medium">
-                  <Heart size={12} />Request
-                </button>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Chart */}
       <div className="bg-card rounded-2xl border border-border p-6">
         <div className="flex items-center gap-2 mb-4">
           <TrendingUp size={16} className="text-red-600" />
-          <h3 className="font-semibold text-foreground">Platform Activity</h3>
+          <h3 className="font-semibold text-foreground">Platform Activity (Demo Data)</h3>
         </div>
         <ResponsiveContainer width="100%" height={200}>
           <AreaChart data={MONTHLY_DATA}>
@@ -233,6 +273,7 @@ export function PatientDashboard() {
             <Area type="monotone" dataKey="requests" stroke="#E53935" strokeWidth={2} fill="url(#pColDon)" name="Requests" />
           </AreaChart>
         </ResponsiveContainer>
+        <p className="text-xs text-muted-foreground mt-2 text-center">Chart shows demo data. Real analytics coming soon.</p>
       </div>
     </div>
   );

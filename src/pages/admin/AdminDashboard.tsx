@@ -1,7 +1,8 @@
 import { useNavigate } from "react-router";
+import { toast } from "sonner";
 import {
   Users, Heart, Building2, Droplets, AlertTriangle, TrendingUp,
-  ArrowRight, Settings, FileText, CheckCircle, Activity,
+  ArrowRight, Settings, CheckCircle, Activity,
 } from "lucide-react";
 import {
   BarChart, Bar, PieChart, Pie, Cell,
@@ -10,56 +11,62 @@ import {
 import { PageHeader } from "../../components/shared/PageHeader";
 import { Avatar } from "../../components/shared/Avatar";
 import { BloodTypePill } from "../../components/shared/BloodTypePill";
-import { RoleBadge, StatusBadge, UrgencyBadge } from "../../components/shared/StatusBadge";
-import { MONTHLY_DATA, BLOOD_TYPE_DATA } from "../../data/charts";
-import { BLOOD_REQUESTS } from "../../data/requests";
-import { DONORS } from "../../data/donors";
-import { HOSPITALS } from "../../data/hospitals";
+import { RoleBadge, StatusBadge } from "../../components/shared/StatusBadge";
+import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
+import { useApi } from "../../hooks/useApi";
+import { adminApi, ApiError } from "../../services/api";
+import type { BloodGroup } from "../../types";
 
-const KPI = [
-  { label: "Total Users", value: "2,84,310", color: "#E53935" },
-  { label: "Active Donors", value: "1,24,850", color: "#1565C0" },
-  { label: "Hospitals", value: "847", color: "#43A047" },
-  { label: "Blood Banks", value: "312", color: "#F9A825" },
-  { label: "Active Requests", value: "284", color: "#7C3AED" },
-  { label: "Lives Saved", value: "48,310", color: "#DB2777" },
+// Demo chart data — replace with real analytics when enough data exists
+const MONTHLY_DATA = [
+  { month: "Mar", donations: 28, requests: 24 },
+  { month: "Apr", donations: 35, requests: 30 },
+  { month: "May", donations: 42, requests: 38 },
+  { month: "Jun", donations: 38, requests: 34 },
+  { month: "Jul", donations: 51, requests: 44 },
+  { month: "Aug", donations: 48, requests: 41 },
 ];
 
-const ACTIVITY_LOG = [
-  { text: "Emergency O- request fulfilled at AIIMS Delhi", time: "2 min ago", type: "success" },
-  { text: "New hospital registered: Sunshine Multispecialty", time: "14 min ago", type: "info" },
-  { text: "Low stock alert: AB- < 20% at Fortis Gurugram", time: "28 min ago", type: "warning" },
-  { text: "AI model retrained with 1,200 new match outcomes", time: "1 hr ago", type: "info" },
-  { text: "Suspicious login attempt blocked for admin account", time: "3 hr ago", type: "error" },
-];
-
-const LOG_COLOR: Record<string, string> = {
-  success: "bg-green-500", info: "bg-blue-500", warning: "bg-yellow-500", error: "bg-red-500",
-};
-
-const PENDING_HOSPITALS = HOSPITALS.filter((h) => h.status === "Pending");
-
-const RECENT_USERS = [
-  { name: "Priya Sharma", role: "donor", blood: "A+", city: "Mumbai", joined: "Aug 4, 2024", status: "Verified" },
-  { name: "Amit Verma", role: "patient", blood: "B+", city: "Pune", joined: "Aug 4, 2024", status: "Pending" },
-  { name: "Dr. Neha Gupta", role: "hospital", blood: "", city: "Hyderabad", joined: "Aug 3, 2024", status: "Verified" },
-  { name: "Ravi Shankar", role: "donor", blood: "O-", city: "Chennai", joined: "Aug 3, 2024", status: "Verified" },
-  { name: "Sneha Pillai", role: "bloodbank", blood: "", city: "Bengaluru", joined: "Aug 2, 2024", status: "Under Review" },
-  { name: "Kunal Joshi", role: "donor", blood: "AB+", city: "Delhi", joined: "Aug 2, 2024", status: "Verified" },
-];
-
-const STATUS_BADGE_COLOR: Record<string, string> = {
-  Verified: "#43A047", Pending: "#F9A825", "Under Review": "#1565C0",
+const BLOOD_COLORS: Record<string, string> = {
+  "O+": "#E53935", "O-": "#7C3AED", "A+": "#1565C0", "A-": "#0891B2",
+  "B+": "#43A047", "B-": "#DB2777", "AB+": "#F9A825", "AB-": "#EA580C",
 };
 
 export function AdminDashboard() {
   const navigate = useNavigate();
 
+  const { data: dashboardResp, isLoading: dashLoading } = useApi(() => adminApi.getDashboard());
+  const { data: hospitals, isLoading: hospLoading, refetch: refetchHospitals } = useApi(
+    () => adminApi.getHospitals()
+  );
+  const { data: analytics } = useApi(() => adminApi.getAnalytics());
+
+  const kpis = (dashboardResp as { data?: Record<string, number> } | null)?.data;
+  const hospitalList = (hospitals as { data?: { id: string; name: string; city: string; verification_status: string; created_at?: string }[] } | null)?.data ?? [];
+  const pendingHospitals = hospitalList.filter((h) => h.verification_status === "PENDING");
+  const analyticsData = (analytics as { data?: { blood_type_distribution: { blood_group: string; count: number }[] } } | null)?.data;
+
+  const bloodTypeData = analyticsData?.blood_type_distribution?.map((b) => ({
+    name: b.blood_group,
+    value: b.count,
+    color: BLOOD_COLORS[b.blood_group] ?? "#888",
+  })) ?? [];
+
+  const handleVerifyHospital = async (id: string, verified: boolean) => {
+    try {
+      await adminApi.verifyHospital(id, verified);
+      toast.success(verified ? "Hospital verified." : "Hospital rejected.");
+      refetchHospitals();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Action failed.");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Admin Control Center"
-        subtitle="BloodLink Platform · August 6, 2026"
+        subtitle="BloodLink Platform — Demo Data"
         breadcrumbs={[{ label: "Dashboard" }]}
         actions={
           <div className="flex gap-2">
@@ -76,19 +83,35 @@ export function AdminDashboard() {
       />
 
       {/* KPI grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        {KPI.map((k) => (
-          <div key={k.label} className="bg-card rounded-2xl border border-border p-4 text-center hover:shadow-sm transition-shadow">
-            <div className="text-xl font-extrabold font-mono" style={{ color: k.color }}>{k.value}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">{k.label}</div>
-          </div>
-        ))}
-      </div>
+      {dashLoading ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => <LoadingSkeleton.SkeletonCard key={i} />)}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          {[
+            { label: "Total Users", value: kpis?.total_users ?? 0, color: "#E53935" },
+            { label: "Active Donors", value: kpis?.active_donors ?? 0, color: "#1565C0" },
+            { label: "Hospitals", value: kpis?.total_hospitals ?? 0, color: "#43A047" },
+            { label: "Blood Banks", value: kpis?.total_blood_banks ?? 0, color: "#F9A825" },
+            { label: "Active Requests", value: kpis?.active_requests ?? 0, color: "#7C3AED" },
+            { label: "Blood Units", value: kpis?.total_blood_units ?? 0, color: "#DB2777" },
+          ].map((k) => (
+            <div key={k.label} className="bg-card rounded-2xl border border-border p-4 text-center hover:shadow-sm transition-shadow">
+              <div className="text-xl font-extrabold font-mono" style={{ color: k.color }}>
+                {k.value.toLocaleString("en-IN")}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">{k.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
-      {/* Charts row */}
+      {/* Charts */}
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-card rounded-2xl border border-border p-6">
-          <h3 className="font-semibold text-foreground mb-4">Monthly Donations & Requests</h3>
+          <h3 className="font-semibold text-foreground mb-1">Monthly Donations & Requests</h3>
+          <p className="text-xs text-muted-foreground mb-4">Demo data — real analytics update as the platform grows.</p>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={MONTHLY_DATA} barSize={20}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
@@ -104,68 +127,32 @@ export function AdminDashboard() {
 
         <div className="bg-card rounded-2xl border border-border p-6">
           <h3 className="font-semibold text-foreground mb-4">Blood Type Distribution</h3>
-          <ResponsiveContainer width="100%" height={160}>
-            <PieChart>
-              <Pie data={BLOOD_TYPE_DATA} cx="50%" cy="50%" innerRadius={45} outerRadius={75} dataKey="value" paddingAngle={2}>
-                {BLOOD_TYPE_DATA.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-              </Pie>
-              <Tooltip formatter={(v: number) => `${v}%`} contentStyle={{ borderRadius: 12 }} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="grid grid-cols-4 gap-1 mt-2">
-            {BLOOD_TYPE_DATA.map((b) => (
-              <div key={b.name} className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: b.color }} />
-                <span className="text-xs text-muted-foreground">{b.name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Users table */}
-      <div className="bg-card rounded-2xl border border-border p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-foreground">Recent User Registrations</h3>
-          <button onClick={() => navigate("/admin/users")}
-            className="text-sm text-red-600 hover:underline font-medium flex items-center gap-1">
-            View all <ArrowRight size={13} />
-          </button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                {["User", "Role", "Blood Type", "Location", "Joined", "Status", "Action"].map((h) => (
-                  <th key={h} className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">{h}</th>
+          {bloodTypeData.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">No data yet.</p>
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height={160}>
+                <PieChart>
+                  <Pie data={bloodTypeData} cx="50%" cy="50%" innerRadius={45} outerRadius={75} dataKey="value" paddingAngle={2}>
+                    {bloodTypeData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                  </Pie>
+                  <Tooltip formatter={(v: number) => v} contentStyle={{ borderRadius: 12 }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="grid grid-cols-4 gap-1 mt-2">
+                {bloodTypeData.map((b) => (
+                  <div key={b.name} className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: b.color }} />
+                    <span className="text-xs text-muted-foreground">{b.name}</span>
+                  </div>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {RECENT_USERS.map((u) => (
-                <tr key={u.name} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                  <td className="py-3 px-3">
-                    <div className="flex items-center gap-2.5">
-                      <Avatar initials={u.name.split(" ").map((n) => n[0]).join("").slice(0, 2)} size="sm" />
-                      <span className="font-medium text-foreground">{u.name}</span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-3"><RoleBadge role={u.role} /></td>
-                  <td className="py-3 px-3">{u.blood ? <BloodTypePill type={u.blood} /> : <span className="text-muted-foreground">—</span>}</td>
-                  <td className="py-3 px-3 text-muted-foreground">{u.city}</td>
-                  <td className="py-3 px-3 text-muted-foreground font-mono text-xs">{u.joined}</td>
-                  <td className="py-3 px-3"><StatusBadge text={u.status} color={STATUS_BADGE_COLOR[u.status] ?? "#6B7280"} /></td>
-                  <td className="py-3 px-3">
-                    <button onClick={() => navigate("/admin/users")} className="text-xs text-red-600 hover:underline font-medium">Manage</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Pending approvals + activity log */}
+      {/* Pending hospital approvals */}
       <div className="grid sm:grid-cols-2 gap-6">
         <div className="bg-card rounded-2xl border border-border p-6">
           <div className="flex items-center justify-between mb-4">
@@ -175,33 +162,58 @@ export function AdminDashboard() {
               All <ArrowRight size={13} />
             </button>
           </div>
-          <div className="space-y-3">
-            {PENDING_HOSPITALS.map((h) => (
-              <div key={h.id} className="flex items-center justify-between p-3 rounded-xl bg-muted/50">
-                <div>
-                  <div className="text-sm font-medium text-foreground">{h.name}, {h.city}</div>
-                  <div className="text-xs text-muted-foreground">Applied {h.joinedAt}</div>
+          {hospLoading ? (
+            <LoadingSkeleton.SkeletonCard />
+          ) : pendingHospitals.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No pending approvals.</p>
+          ) : (
+            <div className="space-y-3">
+              {pendingHospitals.map((h) => (
+                <div key={h.id} className="flex items-center justify-between p-3 rounded-xl bg-muted/50">
+                  <div>
+                    <div className="text-sm font-medium text-foreground">{h.name}, {h.city}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {h.created_at ? new Date(h.created_at).toLocaleDateString("en-IN") : ""}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleVerifyHospital(h.id, true)}
+                      className="px-2.5 py-1 rounded-lg bg-green-500 text-white text-xs font-medium hover:bg-green-600 transition-colors"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => handleVerifyHospital(h.id, false)}
+                      className="px-2.5 py-1 rounded-lg bg-muted text-muted-foreground text-xs font-medium hover:bg-red-50 hover:text-red-600 transition-colors"
+                    >
+                      Reject
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <button className="px-2.5 py-1 rounded-lg bg-green-500 text-white text-xs font-medium hover:bg-green-600 transition-colors">Approve</button>
-                  <button className="px-2.5 py-1 rounded-lg bg-muted text-muted-foreground text-xs font-medium hover:bg-red-50 hover:text-red-600 transition-colors">Reject</button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="bg-card rounded-2xl border border-border p-6">
-          <h3 className="font-semibold text-foreground mb-4">System Activity Log</h3>
-          <div className="space-y-3">
-            {ACTIVITY_LOG.map((log) => (
-              <div key={log.text} className="flex items-start gap-3 text-sm">
-                <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${LOG_COLOR[log.type]}`} />
-                <div className="flex-1">
-                  <div className="text-foreground leading-snug">{log.text}</div>
-                  <div className="text-xs text-muted-foreground font-mono mt-0.5">{log.time}</div>
+          <h3 className="font-semibold text-foreground mb-4">Quick Links</h3>
+          <div className="space-y-2">
+            {[
+              { label: "Manage Users", path: "/admin/users", icon: Users, color: "#E53935" },
+              { label: "All Hospitals", path: "/admin/hospitals", icon: Building2, color: "#43A047" },
+              { label: "Blood Banks", path: "/admin/bloodbanks", icon: Droplets, color: "#1565C0" },
+              { label: "Emergency Requests", path: "/admin/emergency", icon: AlertTriangle, color: "#F9A825" },
+              { label: "Analytics", path: "/admin/analytics", icon: TrendingUp, color: "#7C3AED" },
+            ].map(({ label, path, icon: Icon, color }) => (
+              <button key={label} onClick={() => navigate(path)}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors text-left">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: color + "18" }}>
+                  <Icon size={15} style={{ color }} />
                 </div>
-              </div>
+                <span className="text-sm font-medium text-foreground">{label}</span>
+                <ArrowRight size={13} className="text-muted-foreground ml-auto" />
+              </button>
             ))}
           </div>
         </div>

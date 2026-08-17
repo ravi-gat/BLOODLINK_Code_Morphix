@@ -89,7 +89,7 @@ export function Sidebar({ role, mobileOpen, onMobileClose }: SidebarProps) {
   const { getUnreadCount } = useNotificationStore();
   const navigate = useNavigate();
   const navItems = NAV_CONFIG[role] ?? [];
-  const unread = user ? getUnreadCount(user.id) : 0;
+  const unread = getUnreadCount();
 
   const handleLogout = () => {
     logout();

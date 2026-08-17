@@ -130,7 +130,7 @@ export function LoginPage() {
         )}
 
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs rounded-xl px-4 py-2.5">
-          <span className="font-semibold">Demo credentials:</span> {DEMO_CREDENTIALS[role].email} (password available in the developer verification report).
+          <span className="font-semibold">Demo account:</span> {DEMO_CREDENTIALS[role].email} (password is documented in the local setup guide).
         </div>
 
         <button

@@ -1,175 +1,179 @@
 import { useNavigate } from "react-router";
+import { toast } from "sonner";
 import {
-  Droplets, Users, AlertTriangle, Calendar, ArrowRight, Plus, TrendingUp,
+  Droplets, AlertTriangle, ArrowRight, Plus, TrendingUp,
+  CheckCircle, Clock,
 } from "lucide-react";
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-} from "recharts";
 import { PageHeader } from "../../components/shared/PageHeader";
 import { StatCard } from "../../components/shared/StatCard";
 import { BloodTypePill } from "../../components/shared/BloodTypePill";
 import { UrgencyBadge, InventoryStatusBadge } from "../../components/shared/StatusBadge";
+import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
 import { useAuthStore } from "../../stores/useAuthStore";
-import { BLOOD_INVENTORY, APPOINTMENTS } from "../../data/hospitals";
-import { BLOOD_REQUESTS } from "../../data/requests";
-import { MONTHLY_DATA } from "../../data/charts";
+import { useApi } from "../../hooks/useApi";
+import { hospitalApi, ApiError } from "../../services/api";
+import type { BloodGroup, UrgencyLevel } from "../../types";
 
 export function HospitalDashboard() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const emergencyReqs = BLOOD_REQUESTS.filter(
-    (r) => r.urgency === "Critical" || r.urgency === "High"
-  ).slice(0, 4);
-  const todayApts = APPOINTMENTS.filter((a) => a.status === "Scheduled").slice(0, 3);
-  const lowStockItems = BLOOD_INVENTORY.filter((i) => i.status !== "good");
+
+  const { data: profile } = useApi(() => hospitalApi.getProfile());
+  const { data: inventory, isLoading: invLoading } = useApi(() => hospitalApi.getInventory());
+  const { data: requests, isLoading: reqLoading, refetch: refetchRequests } = useApi(
+    () => hospitalApi.getRequests()
+  );
+  const { data: analytics } = useApi(() => hospitalApi.getAnalytics());
+
+  const activeReqs = requests?.filter(
+    (r) => r.status !== "COMPLETED" && r.status !== "CANCELLED"
+  ) ?? [];
+  const analyticsData = (analytics as { data?: { total_requests: number; completed_requests: number; pending_requests: number; fulfillment_rate: number } } | null)?.data;
+
+  const lowStockItems = inventory?.filter((i) => i.units_available < 5) ?? [];
+
+  const handleApprove = async (id: string) => {
+    try {
+      await hospitalApi.approveRequest(id);
+      toast.success("Request approved and set to In Progress.");
+      refetchRequests();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to approve request.");
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    try {
+      await hospitalApi.rejectRequest(id);
+      toast.info("Request rejected.");
+      refetchRequests();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to reject request.");
+    }
+  };
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`${user?.name ?? "Hospital"} — Dashboard`}
-        subtitle="Last updated 2 minutes ago"
+        title={`Welcome, ${profile?.hospital_name ?? user?.name ?? "Hospital"}`}
+        subtitle="Hospital management overview"
         breadcrumbs={[{ label: "Dashboard" }]}
         actions={
           <button
-            onClick={() => navigate("/hospital/emergency")}
+            onClick={() => navigate("/hospital/inventory")}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors"
           >
-            <Plus size={16} /> New Request
+            <Plus size={16} /> Manage Inventory
           </button>
         }
       />
 
       {/* Low stock alert */}
       {lowStockItems.length > 0 && (
-        <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-2xl p-4 flex items-start gap-3">
-          <AlertTriangle size={20} className="text-orange-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <div className="font-semibold text-orange-800 dark:text-orange-300 text-sm">Low Stock Alert</div>
-            <div className="text-orange-700 dark:text-orange-400 text-xs mt-0.5">
-              {lowStockItems.filter(i => i.status === "critical").length} blood types critically low ·{" "}
-              {lowStockItems.filter(i => i.status === "low").length} blood types low.{" "}
-              <button onClick={() => navigate("/hospital/inventory")} className="underline font-medium">View inventory</button>
-            </div>
-          </div>
+        <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-2xl p-4 flex items-center gap-3">
+          <AlertTriangle size={18} className="text-orange-600 flex-shrink-0" />
+          <p className="text-sm text-orange-700 dark:text-orange-300">
+            <strong>Low stock alert:</strong>{" "}
+            {lowStockItems.map((i) => `${i.blood_group} (${i.units_available} units)`).join(", ")} — consider restocking.
+          </p>
         </div>
       )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Droplets} label="Available Blood Units" value="76" delta="Total stock" color="#E53935" />
-        <StatCard icon={Users} label="Patients Waiting" value="18" delta="3 critical" color="#1565C0" deltaPositive={false} />
-        <StatCard icon={AlertTriangle} label="Emergency Requests" value="5" delta="Active" color="#D32F2F" deltaPositive={false} />
-        <StatCard icon={Calendar} label="Today's Appointments" value="23" delta="Donation camp" color="#43A047" />
+        <StatCard icon={AlertTriangle} label="Active Requests" value={String(analyticsData?.pending_requests ?? activeReqs.length)} color="#E53935" />
+        <StatCard icon={CheckCircle} label="Completed" value={String(analyticsData?.completed_requests ?? 0)} color="#43A047" />
+        <StatCard icon={Clock} label="Total Requests" value={String(analyticsData?.total_requests ?? 0)} color="#1565C0" />
+        <StatCard icon={TrendingUp} label="Fulfillment Rate" value={`${analyticsData?.fulfillment_rate ?? 0}%`} color="#F9A825" />
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Inventory */}
-        <div className="lg:col-span-2 bg-card rounded-2xl border border-border p-6">
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Blood inventory */}
+        <div className="bg-card rounded-2xl border border-border p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-foreground">Blood Inventory Status</h3>
+            <h3 className="font-semibold text-foreground">Blood Inventory</h3>
             <button onClick={() => navigate("/hospital/inventory")} className="text-sm text-red-600 hover:underline font-medium flex items-center gap-1">
-              Full view <ArrowRight size={13} />
+              Manage <ArrowRight size={13} />
             </button>
           </div>
-          <div className="space-y-3">
-            {BLOOD_INVENTORY.map((item) => {
-              const pct = Math.round((item.units / item.capacity) * 100);
-              const barColor = item.status === "good" ? "#43A047" : item.status === "low" ? "#F9A825" : "#D32F2F";
-              return (
-                <div key={item.bloodGroup} className="flex items-center gap-4">
-                  <BloodTypePill type={item.bloodGroup} />
+          {invLoading ? (
+            <LoadingSkeleton.SkeletonCard />
+          ) : inventory?.length === 0 ? (
+            <div className="text-center py-6">
+              <p className="text-sm text-muted-foreground mb-3">No inventory recorded yet.</p>
+              <button onClick={() => navigate("/hospital/inventory")} className="text-sm text-red-600 underline">
+                Add inventory
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {(inventory ?? []).slice(0, 6).map((item) => (
+                <div key={item.id} className="flex items-center gap-4 p-3 rounded-xl bg-muted/50">
+                  <BloodTypePill type={item.blood_group as BloodGroup} />
                   <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-foreground">{item.units} / {item.capacity} units</span>
-                      <InventoryStatusBadge status={item.status} />
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2">
-                      <div className="h-2 rounded-full transition-all" style={{ width: `${pct}%`, background: barColor }} />
+                    <div className="text-sm font-medium text-foreground">{item.component_type}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {item.expiry_date ? `Expires: ${item.expiry_date}` : "No expiry set"}
                     </div>
                   </div>
+                  <div className="text-right">
+                    <div className="text-lg font-bold font-mono text-foreground">{item.units_available}</div>
+                    <InventoryStatusBadge
+                      status={item.units_available >= 10 ? "good" : item.units_available >= 5 ? "low" : "critical"}
+                    />
+                  </div>
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Emergency requests */}
+        {/* Recent requests */}
         <div className="bg-card rounded-2xl border border-border p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-foreground">Emergency Requests</h3>
+            <h3 className="font-semibold text-foreground">Recent Requests</h3>
             <button onClick={() => navigate("/hospital/emergency")} className="text-sm text-red-600 hover:underline font-medium flex items-center gap-1">
-              All <ArrowRight size={13} />
+              View all <ArrowRight size={13} />
             </button>
           </div>
-          <div className="space-y-3">
-            {emergencyReqs.map((r) => (
-              <div key={r.id} className="p-3 rounded-xl bg-muted/50 border border-border">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-foreground text-sm truncate">{r.patientName}</span>
-                  <UrgencyBadge urgency={r.urgency} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <BloodTypePill type={r.bloodGroup} />
-                    <span className="text-xs text-muted-foreground">{r.units} units</span>
+          {reqLoading ? (
+            <LoadingSkeleton.SkeletonCard />
+          ) : activeReqs.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No active requests.</p>
+          ) : (
+            <div className="space-y-3">
+              {activeReqs.slice(0, 4).map((r) => (
+                <div key={r.id} className="flex items-center gap-4 p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors">
+                  <BloodTypePill type={r.blood_group as BloodGroup} />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-foreground text-sm truncate">
+                      {r.patient_name || "Patient"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">{r.units_required} units</div>
                   </div>
-                  <button className="px-2.5 py-1 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 transition-colors">
-                    Approve
-                  </button>
+                  <UrgencyBadge urgency={r.urgency as UrgencyLevel} />
+                  {r.status === "PENDING" || r.status === "MATCHING" || r.status === "DONOR_FOUND" ? (
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={() => handleApprove(r.id)}
+                        className="px-2.5 py-1 rounded-lg bg-green-500 text-white text-xs font-medium hover:bg-green-600 transition-colors"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleReject(r.id)}
+                        className="px-2.5 py-1 rounded-lg bg-muted text-muted-foreground text-xs font-medium hover:bg-red-50 hover:text-red-600 transition-colors"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground capitalize">{r.status.toLowerCase()}</span>
+                  )}
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Chart + Appointments */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-card rounded-2xl border border-border p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp size={16} className="text-red-600" />
-            <h3 className="font-semibold text-foreground">Blood Usage — Last 8 Months</h3>
-          </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={MONTHLY_DATA}>
-              <defs>
-                <linearGradient id="hColDon" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#E53935" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#E53935" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="hColReq" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#1565C0" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#1565C0" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B7280" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "#6B7280" }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid rgba(0,0,0,0.08)" }} />
-              <Area type="monotone" dataKey="donations" stroke="#E53935" strokeWidth={2} fill="url(#hColDon)" name="Donations" />
-              <Area type="monotone" dataKey="requests" stroke="#1565C0" strokeWidth={2} fill="url(#hColReq)" name="Requests" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="bg-card rounded-2xl border border-border p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-foreground">Today's Appointments</h3>
-            <button onClick={() => navigate("/hospital/appointments")} className="text-sm text-red-600 hover:underline font-medium flex items-center gap-1">
-              All <ArrowRight size={13} />
-            </button>
-          </div>
-          <div className="space-y-3">
-            {todayApts.map((a) => (
-              <div key={a.id} className="p-3 rounded-xl bg-muted/50">
-                <div className="flex items-center gap-2 mb-1">
-                  <BloodTypePill type={a.donorBloodGroup} />
-                  <span className="font-medium text-foreground text-sm truncate flex-1">{a.donorName}</span>
-                </div>
-                <div className="text-xs text-muted-foreground">{a.time} · {a.type}</div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
