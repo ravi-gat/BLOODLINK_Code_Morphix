@@ -1,9 +1,17 @@
 # 🩸 BloodLink
 
-### Healthcare Blood Donation & Emergency Response Platform
+<p align="center">
+  <img src="public/logos/code-morphix.svg" alt="Code Morphix" width="110"/>
+</p>
+
+<h1 align="center">BloodLink</h1>
 
 <p align="center">
-  <strong>Connecting Patients, Donors, Hospitals & Blood Banks</strong>
+  <strong>Healthcare Blood Donation & Emergency Response Platform</strong>
+</p>
+
+<p align="center">
+  Connecting Patients • Donors • Hospitals • Blood Banks
 </p>
 
 <p align="center">
@@ -11,190 +19,125 @@
 </p>
 
 <p align="center">
-  A full-stack healthcare technology platform for blood discovery,
-  emergency requisitions, donor matching, inventory management,
-  geolocation services, notifications, analytics, and role-based workflows.
+  A modern full-stack healthcare platform for blood discovery,
+  emergency response, donor matching, inventory management,
+  geolocation, notifications, analytics, and role-based workflows.
 </p>
 
 ---
 
-## 📌 Project Overview
+## 🏆 Project Status
 
-**BloodLink** is a full-stack healthcare platform designed to connect blood
-donors, patients, hospitals, and blood banks through a centralized digital
-ecosystem.
+<p align="center">
 
-The platform enables users to:
+![Backend](https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge)
 
-- Find compatible blood donors
-- Search blood availability
-- Create blood requests
-- Raise emergency blood requisitions
-- Match donors with blood requirements
-- Manage hospital blood inventory
-- Manage blood-bank inventory
-- Locate nearby healthcare facilities
-- Track emergency resources using maps
-- Receive notifications
-- Manage role-specific dashboards
-- Monitor analytics and operational metrics
-- Maintain secure role-based access
+![Frontend](https://img.shields.io/badge/Frontend-React%20%2B%20TypeScript-61DAFB?style=for-the-badge)
 
-BloodLink is built using a modern **React + TypeScript frontend**, a
-**FastAPI backend**, and a **PostgreSQL database**, with Google Maps
-integration for geolocation and navigation.
+![Database](https://img.shields.io/badge/Database-PostgreSQL-336791?style=for-the-badge)
+
+![Tests](https://img.shields.io/badge/Tests-92%2F92%20Passing-success?style=for-the-badge)
+
+![Build](https://img.shields.io/badge/Production%20Build-Passing-success?style=for-the-badge)
+
+![Maps](https://img.shields.io/badge/Google%20Maps-Integrated-4285F4?style=for-the-badge)
+
+</p>
 
 ---
 
-# 🏢 Powered by Code Morphix
+# 📌 Overview
 
-## Code Morphix
+**BloodLink** is a full-stack healthcare technology platform designed to
+connect **blood donors, patients, hospitals, and blood banks** through a
+centralized digital ecosystem.
 
-**Transforming Ideas Into Innovation**
+The platform provides a complete workflow for:
 
-BloodLink is powered by **Code Morphix**, with the platform designed around
-production-oriented full-stack engineering principles.
+- 🩸 Blood discovery
+- 🚨 Emergency blood requisitions
+- 🤝 Donor matching
+- 🏥 Hospital operations
+- 🏦 Blood-bank inventory
+- 🗺️ Healthcare facility geolocation
+- 🔔 Notifications
+- 📊 Analytics
+- 🔐 Secure authentication
+- 👥 Role-based access control
 
-The Code Morphix identity is integrated throughout the BloodLink application,
-including:
-
-- Application header
-- Dashboard layouts
-- Authentication pages
-- Landing page
-- Sidebar branding
-- Footer
-- Application-wide branding components
-
----
-
-# 🚀 Key Features
-
-## 🔐 Authentication & Security
-
-BloodLink implements secure authentication and authorization mechanisms.
-
-### Authentication
-
-- Email/password registration
-- Email/password login
-- JWT access tokens
-- JWT refresh tokens
-- HTTP-only authentication cookies
-- Password hashing using bcrypt
-- Email verification
-- Password reset
-- Password change
-- Logout
-- Session management
-
-### Security
-
-- Role-Based Access Control (RBAC)
-- FastAPI dependency-level authorization
-- Pydantic input validation
-- Authentication rate limiting
-- CORS configuration
-- Audit logging
-- Secure password hashing
-- Token expiration
-- Environment-based configuration
-- Sensitive credentials excluded from Git
+BloodLink combines a **React + TypeScript frontend**, **FastAPI backend**,
+and **PostgreSQL database**, with Google Maps integration for location-based
+healthcare resources.
 
 ---
 
-# 👥 User Roles
+# 🎯 Problem Statement
 
-BloodLink supports multiple healthcare ecosystem roles.
+Finding compatible blood during emergencies can involve multiple disconnected
+systems and manual communication between patients, donors, hospitals, and
+blood banks.
 
-## 👤 Patient
-
-Patients can:
-
-- Search for compatible blood
-- Search nearby donors
-- Create blood requests
-- Create emergency requests
-- Track requests
-- View notifications
-- View nearby healthcare resources
-- Manage their profile
-
----
-
-## 🩸 Donor
-
-Donors can:
-
-- Create donor profiles
-- Manage availability
-- Receive blood requests
-- Accept or decline requests
-- View donation history
-- Track rewards
-- Check donor health readiness
-- Find nearby donation centers
-- View nearby emergency requirements
-- Manage their profile
-
----
-
-## 🏥 Hospital
-
-Hospitals can:
-
-- Manage hospital profiles
-- Manage blood inventory
-- View blood requests
-- Approve/reject requests
-- Manage emergency transfusion workflows
-- Manage appointments
-- Monitor analytics
-- View nearby blood resources
-- Track emergency requirements
-
----
-
-## 🏦 Blood Bank
-
-Blood banks can:
-
-- Manage blood-bank profiles
-- Manage blood inventory
-- Track blood groups
-- Monitor stock levels
-- Track expiring units
-- Process requests
-- Manage collection records
-- Manage dispatch records
-- Generate reports
-- Monitor nearby emergency resources
-
----
-
-## 🛡️ Administrator
-
-Administrators can:
-
-- Manage platform users
-- Manage donors
-- Manage hospitals
-- Manage blood banks
-- Monitor blood requests
-- Monitor emergency requests
-- View analytics
-- View audit logs
-- Monitor platform activity
-- Access platform geolocation intelligence
-- Manage system-level operations
-
----
-
-# 🩸 Blood Management System
-
-BloodLink supports all eight major ABO/Rh blood groups:
+BloodLink addresses this problem by creating a centralized platform where:
 
 ```text
+Patient
+   │
+   ▼
+Blood Request
+   │
+   ▼
+Compatibility Matching
+   │
+   ├──────────────► Donors
+   │
+   ├──────────────► Hospitals
+   │
+   └──────────────► Blood Banks
+                       │
+                       ▼
+                Emergency Response
+
+The goal is to reduce delays in identifying compatible blood resources and
+improve coordination between the healthcare stakeholders involved.
+
+✨ Core Features
+🔐 Secure Authentication
+
+BloodLink currently uses email/password authentication.
+
+Features include:
+
+Email/password registration
+Email/password login
+JWT access tokens
+JWT refresh tokens
+HTTP-only authentication cookies
+bcrypt password hashing
+Email verification
+Password reset
+Password change
+Logout
+Session management
+Authentication rate limiting
+👥 Role-Based Platform
+
+BloodLink supports five primary roles:
+
+Role	Main Responsibilities
+👤 Patient	Search blood, create requests, track emergencies
+🩸 Donor	Manage availability, respond to requests, track donations
+🏥 Hospital	Manage inventory, requests, emergency workflows
+🏦 Blood Bank	Manage blood stock, expiry, collection and dispatch
+🛡️ Admin	Manage users, facilities, requests, analytics and audits
+
+All sensitive permissions are enforced at the FastAPI backend level using
+role-based access control.
+
+🩸 Blood Compatibility Explorer
+
+BloodLink includes an interactive blood compatibility system covering all
+eight ABO/Rh blood groups:
+
 O-
 O+
 A-
@@ -203,95 +146,90 @@ B-
 B+
 AB-
 AB+
-
-The platform contains an interactive blood compatibility system that
-visualizes compatible donor and recipient blood groups.
-
 Universal Red Cell Donor
 O-
 Universal Red Cell Receiver
 AB+
 
-The compatibility system is integrated into:
+The compatibility explorer dynamically displays compatible donor and
+recipient blood groups.
+
+It is integrated into:
 
 Landing page
 Blood search
-Emergency requisition workflows
+Emergency requisition
 Blood request workflows
 🚨 Emergency Blood Response
 
-BloodLink provides dedicated emergency blood request workflows.
+BloodLink provides dedicated emergency blood requisition workflows.
 
-Emergency requests can include:
+Emergency requests can contain:
 
-Required blood group
+Blood group
 Required units
 Urgency level
-Hospital/facility information
-Patient-related request information
-Location information
+Facility information
+Location
 Request status
-Donor matching
+Donor matching information
 
-The emergency workflow is connected with:
+The emergency workflow connects:
 
-Donor matching
-Notifications
-Maps
-Hospital workflows
-Blood-bank resources
-🗺️ Google Maps & Geolocation
+Emergency Request
+       │
+       ├──► Compatible Donors
+       │
+       ├──► Hospitals
+       │
+       ├──► Blood Banks
+       │
+       ├──► Notifications
+       │
+       └──► Map Resources
+🗺️ Google Maps & Location Intelligence
 
-BloodLink includes a production-oriented Google Maps integration.
+BloodLink integrates Google Maps for healthcare resource discovery.
 
-Map Features
-Hospital locations
-Blood-bank locations
-Emergency locations
-Donor location clusters
-Current-user geolocation
-Distance calculation
-Nearby facilities
-Blood-group filtering
-City-based filtering
-Facility category filtering
-Interactive markers
-Information windows
-Navigation
-Google Maps directions
-📍 Resource Map
+Map capabilities
+🏥 Hospital locations
+🏦 Blood-bank locations
+🚨 Emergency locations
+🩸 Donor location clusters
+📍 Current-user geolocation
+📏 Distance calculation
+🔎 Nearby facilities
+🩸 Blood-group filtering
+🏙️ City filtering
+🗂️ Facility category filtering
+📌 Interactive markers
+🧭 Google Maps navigation
+📍 Directions
+Map Categories
+All Facilities
+     │
+     ├── Hospitals
+     │
+     ├── Blood Banks
+     │
+     └── Emergencies
 
-The map system provides categories such as:
-
-All
-Hospitals
-Blood Banks
-Emergencies
-
-Users can explore healthcare resources geographically.
-
-The system obtains location information from the BloodLink backend and
-PostgreSQL database.
-
-🧭 Directions
-
-Users can select a facility or emergency resource and open navigation
-through Google Maps.
+Location data is retrieved from the BloodLink backend and PostgreSQL database.
 
 🧠 Donor Health Readiness
 
 BloodLink includes an interactive donor health-readiness assessment.
 
-The assessment considers parameters such as:
+The platform evaluates parameters such as:
 
 Hemoglobin
 Blood pressure
 Body weight
-Donation cooldown period
+Donation cooldown
 Recent infection history
 Tattoo/piercing considerations
 
-The frontend provides:
+The interface provides:
 
 Readiness score
 Circular score visualization
@@ -299,29 +237,23 @@ Clinical readiness visualization
 Interactive inputs
 Immediate feedback
 
-This feature is intended as a platform-level eligibility/readiness aid and
-should not be treated as a substitute for professional medical assessment.
+This feature is intended as a platform-level readiness aid and is not a
+replacement for professional medical assessment.
 
 🔎 Global Search
 
-BloodLink includes a unified global search system.
+BloodLink provides a unified global search system.
 
-Search Access
-
-Users can access global search using:
-
+Keyboard Shortcut
 Ctrl + K
 
-or:
+or
 
 Cmd + K
 
 depending on the operating system.
 
-Search Categories
-
-The global search can work across platform entities such as:
-
+Searchable Resources
 Donors
 Hospitals
 Blood Banks
@@ -332,24 +264,21 @@ Blood inventory information
 
 Search behavior is role-aware.
 
-📊 Dashboards
+📊 Role-Based Dashboards
+👤 Patient Dashboard
 
-BloodLink provides dedicated dashboards for every major role.
-
-Patient Dashboard
-
-Includes:
+Features:
 
 Blood request activity
 Nearby donors
 Emergency requests
 Request history
 Notifications
-Search
+Blood search
 Location resources
-Donor Dashboard
+🩸 Donor Dashboard
 
-Includes:
+Features:
 
 Donor availability
 Donation requests
@@ -358,9 +287,9 @@ Rewards
 Health readiness
 Nearby donation centers
 Notifications
-Hospital Dashboard
+🏥 Hospital Dashboard
 
-Includes:
+Features:
 
 Blood inventory
 Blood requests
@@ -369,21 +298,21 @@ Appointments
 Analytics
 Nearby resources
 Notifications
-Blood Bank Dashboard
+🏦 Blood Bank Dashboard
 
-Includes:
+Features:
 
 Blood inventory
 Stock levels
 Expiry tracking
-Requests
+Blood requests
 Collection records
 Dispatch records
 Reports
 Resource maps
-Admin Dashboard
+🛡️ Admin Dashboard
 
-Includes:
+Features:
 
 Platform statistics
 User management
@@ -409,9 +338,9 @@ Notifications are integrated with important platform operations.
 
 📈 Analytics & Reporting
 
-Role-specific analytics are available for platform operations.
+BloodLink provides role-specific analytics.
 
-Analytics include areas such as:
+Analytics include:
 
 Blood request counts
 Emergency request counts
@@ -423,53 +352,11 @@ Facility statistics
 Platform activity
 Expiring blood units
 
-Blood banks also support report/export workflows.
+Blood-bank users can also access report/export workflows.
 
-🗄️ Database
-
-BloodLink uses:
-
-PostgreSQL
-
-with:
-
-SQLAlchemy
-
-for backend database interaction.
-
-The backend is mapped to the existing Prisma PostgreSQL schema.
-
-The project supports:
-
-Users
-Patients
-Donors
-Hospitals
-Blood Banks
-Blood Inventory
-Blood Requests
-Emergency Requests
-Donations
-Notifications
-Audit Logs
-🔄 Database Migration
-
-Database migrations are managed using:
-
-Alembic
-
-The project includes a migration for facility geolocation:
-
-latitude
-longitude
-
-for:
-
-Hospitals
-Blood Banks
 🏗️ System Architecture
                          ┌─────────────────────────┐
-                         │       BloodLink UI      │
+                         │      BLOODLINK UI       │
                          │                         │
                          │ React + TypeScript      │
                          │ Vite + Tailwind CSS     │
@@ -480,7 +367,7 @@ Blood Banks
                                       │ JWT
                                       ▼
                          ┌─────────────────────────┐
-                         │       FastAPI API       │
+                         │       FASTAPI           │
                          │                         │
                          │ Authentication          │
                          │ RBAC                    │
@@ -494,11 +381,11 @@ Blood Banks
                                       │ SQLAlchemy
                                       ▼
                          ┌─────────────────────────┐
-                         │       PostgreSQL        │
+                         │       POSTGRESQL        │
                          │                         │
                          │ Users                   │
-                         │ Donors                  │
                          │ Patients                │
+                         │ Donors                  │
                          │ Hospitals               │
                          │ Blood Banks             │
                          │ Requests                │
@@ -506,45 +393,79 @@ Blood Banks
                          │ Donations               │
                          │ Notifications           │
                          │ Audit Logs              │
-                         └─────────────────────────┘
+                         └────────────┬────────────┘
                                       │
-                    ┌─────────────────┼─────────────────┐
-                    │                 │                 │
-                    ▼                 ▼                 ▼
-             Google Maps         Gmail SMTP       Geolocation
-             & Directions        Email Service       Services
+                ┌─────────────────────┼─────────────────────┐
+                │                     │                     │
+                ▼                     ▼                     ▼
+          Google Maps             Gmail SMTP          Geolocation
+          & Directions            Email Service         Services
 🛠️ Technology Stack
 Frontend
 Technology	Purpose
-React	UI framework
-TypeScript	Type-safe frontend development
-Vite	Development/build tooling
-Tailwind CSS	UI styling
+React	User interface
+TypeScript	Type safety
+Vite	Development and production build
+Tailwind CSS	Styling
 Zustand	State management
-React Router	Application routing
-Recharts	Analytics visualization
+React Router	Routing
+Recharts	Data visualization
 Backend
 Technology	Purpose
-Python	Backend language
-FastAPI	REST API framework
+Python	Backend development
+FastAPI	REST API
 SQLAlchemy	ORM
-Pydantic	Validation
+Pydantic	Data validation
 JWT	Authentication
 bcrypt	Password hashing
 Uvicorn	ASGI server
 SlowAPI	Rate limiting
-Database & DevOps
+Database & Infrastructure
 Technology	Purpose
 PostgreSQL	Relational database
 Alembic	Database migrations
 Git	Version control
-GitHub	Source control & collaboration
+GitHub	Source control
 External Services
 Service	Purpose
 Google Maps	Maps and navigation
 Google Geocoding	Location services
 Gmail SMTP	Email verification/reset
 Browser Geolocation	User location
+🗄️ Database
+
+BloodLink uses PostgreSQL with SQLAlchemy.
+
+The backend is mapped to the existing Prisma PostgreSQL schema.
+
+Main entities
+User
+Patient
+Donor
+Hospital
+BloodBank
+BloodInventory
+BloodRequest
+EmergencyRequest
+Donation
+Notification
+AuditLog
+🔄 Database Migrations
+
+Database migrations are managed using Alembic.
+
+The project includes a migration adding:
+
+latitude
+longitude
+
+to:
+
+Hospital
+BloodBank
+
+These coordinates are used by the map and nearby-resource features.
+
 📁 Project Structure
 BLOODLINK_Code_Morphix/
 │
@@ -577,9 +498,7 @@ BLOODLINK_Code_Morphix/
 │   │   └── main.py
 │   │
 │   ├── tests/
-│   │
 │   ├── alembic/
-│   │
 │   ├── requirements.txt
 │   ├── .env.example
 │   └── seed.py
@@ -590,12 +509,9 @@ BLOODLINK_Code_Morphix/
 │
 ├── src/
 │   ├── app/
-│   │
 │   ├── components/
 │   │   └── shared/
-│   │
 │   ├── layouts/
-│   │
 │   ├── pages/
 │   │   ├── auth/
 │   │   ├── patient/
@@ -603,9 +519,7 @@ BLOODLINK_Code_Morphix/
 │   │   ├── hospital/
 │   │   ├── bloodbank/
 │   │   └── admin/
-│   │
 │   ├── services/
-│   │
 │   └── stores/
 │
 ├── package.json
@@ -615,7 +529,7 @@ BLOODLINK_Code_Morphix/
 ⚙️ Installation
 Prerequisites
 
-Install the following:
+Install:
 
 Node.js
 npm
@@ -626,7 +540,7 @@ Git
 
 Navigate to the backend:
 
-cd D:\Blood_donor_fsd\backend
+cd backend
 
 Create a virtual environment:
 
@@ -639,25 +553,20 @@ Activate it:
 Install dependencies:
 
 pip install -r requirements.txt
-🔐 Backend Environment Configuration
+🔐 Backend Environment Variables
 
 Create:
 
 backend/.env
 
-Use the example configuration:
+Use backend/.env.example as the template.
 
-backend/.env.example
+Example:
 
-Configure the required database, JWT, email, CORS, and Google Maps
-configuration values.
-
-Example
 DATABASE_URL=postgresql://postgres:password@localhost:5432/bloodlink
 
 JWT_SECRET=replace-with-a-secure-secret
 JWT_REFRESH_SECRET=replace-with-a-secure-refresh-secret
-
 JWT_ALGORITHM=HS256
 
 ACCESS_TOKEN_EXPIRE_MINUTES=60
@@ -683,28 +592,25 @@ SMTP_FROM_NAME=BloodLink Healthcare Network
 
 REQUIRE_EMAIL_VERIFICATION=true
 
-Never commit .env files or credentials to GitHub.
+Never commit .env files, passwords, API keys, JWT secrets, or SMTP
+credentials to GitHub.
 
-🗃️ Database Setup
+🗃️ PostgreSQL Setup
 
-Create a PostgreSQL database named:
+Create a PostgreSQL database:
 
 bloodlink
 
-Then configure:
+Configure:
 
 DATABASE_URL=postgresql://postgres:password@localhost:5432/bloodlink
 
-Run migrations if required:
+Run migrations:
 
 alembic upgrade head
 ▶️ Run Backend
 
-From:
-
-backend/
-
-run:
+From the backend directory:
 
 python -m uvicorn app.main:app --reload --port 8000
 
@@ -716,7 +622,7 @@ Health check:
 
 http://localhost:8000/health
 
-Swagger API documentation:
+Swagger:
 
 http://localhost:8000/docs
 
@@ -725,9 +631,7 @@ ReDoc:
 http://localhost:8000/redoc
 🎨 Frontend Setup
 
-Open another terminal.
-
-Navigate to:
+Open another terminal:
 
 cd D:\Blood_donor_fsd
 
@@ -735,11 +639,11 @@ Install dependencies:
 
 npm install
 
-Create/configure:
+Create:
 
 .env
 
-Example:
+Configure:
 
 VITE_API_BASE_URL=http://localhost:8000/api
 VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
@@ -751,120 +655,67 @@ Frontend:
 http://localhost:5173
 🧪 Testing
 
-BloodLink includes an automated backend test suite.
+BloodLink includes a comprehensive automated backend test suite.
 
 Run:
 
 cd backend
 .\.venv\Scripts\Activate.ps1
 python -m pytest -q
-
-Current verified result:
-
+Verified Result
 92 passed
-🏗️ Production Build
-
-Build the frontend:
-
-npm run build
-
-The production build has been successfully verified.
-
-Example successful build:
-
-✓ built successfully
-🔍 Validation
-
-The project has been validated across multiple areas.
-
-Backend
-FastAPI startup
-PostgreSQL connectivity
-SQLAlchemy mappings
+Test Coverage Includes
 Authentication
+Registration
+Login
+Email verification
+Password reset
 RBAC
 Blood compatibility
 Blood requests
-Emergency workflows
+Emergency requests
 Donor workflows
 Blood-bank workflows
 Hospital workflows
 Maps
 Search
 Notifications
-Security
-Audit logging
-Frontend
-React compilation
-TypeScript compilation
-Routing
-Authentication UI
-Role dashboards
-Maps
-Search
-Analytics
-Responsive layouts
-Code Morphix branding
-Production build
-📊 Current Test Status
-Backend Tests
-92 / 92 PASSED
+Security hardening
+Authentication edge cases
+🏗️ Production Build
 
-Frontend Production Build
-PASSED
+Build the frontend:
 
-SQLAlchemy Mapper Validation
-PASSED
+npm run build
 
-Python Compilation
-PASSED
-🔒 Security Guidelines
+Verified result:
 
-Before deploying to production:
+✓ built successfully
 
-Replace all development JWT secrets.
-Use strong randomly generated secrets.
-Configure production CORS origins.
-Never commit .env.
-Use HTTPS.
-Use secure cookie configuration.
-Configure production SMTP credentials.
-Restrict Google Maps API keys by domain/API.
-Rotate compromised credentials immediately.
-Use a managed PostgreSQL deployment or hardened production database.
-🌍 Deployment
+The production build completed successfully after the final platform changes.
 
-BloodLink can be deployed using a production architecture such as:
-
-                         Internet
-                             │
-                             ▼
-                      ┌─────────────┐
-                      │   HTTPS     │
-                      │ Reverse     │
-                      │ Proxy       │
-                      └──────┬──────┘
-                             │
-               ┌─────────────┴─────────────┐
-               │                           │
-               ▼                           ▼
-        React/Vite Frontend          FastAPI Backend
-               │                           │
-               │                           ▼
-               │                      PostgreSQL
-               │
-               └──── Google Maps / SMTP
-
-Potential deployment platforms can be selected based on production
-requirements.
-
-🧭 API Overview
+📊 Verification Summary
+Component	Status
+FastAPI Backend	✅ Passing
+PostgreSQL	✅ Connected
+SQLAlchemy Mappers	✅ Valid
+Authentication	✅ Passing
+RBAC	✅ Passing
+Email Verification	✅ Implemented
+Blood Compatibility	✅ Passing
+Emergency Workflow	✅ Passing
+Maps	✅ Integrated
+Search	✅ Passing
+Notifications	✅ Passing
+Security Tests	✅ Passing
+Backend Tests	✅ 92/92
+Frontend Build	✅ Passing
+🔌 API Overview
 Authentication
 POST /api/auth/register
 POST /api/auth/login
 POST /api/auth/logout
 GET  /api/auth/me
-GET  /api/auth/verify-email
 POST /api/auth/verify-email
 POST /api/auth/resend-verification
 POST /api/auth/forgot-password
@@ -895,13 +746,13 @@ POST /api/hospitals/requests/{id}/approve
 POST /api/hospitals/requests/{id}/reject
 GET  /api/hospitals/analytics
 Blood Banks
-GET  /api/bloodbanks/profile
-PUT  /api/bloodbanks/profile
-GET  /api/bloodbanks/inventory
-POST /api/bloodbanks/inventory
-PUT  /api/bloodbanks/inventory/{id}
+GET    /api/bloodbanks/profile
+PUT    /api/bloodbanks/profile
+GET    /api/bloodbanks/inventory
+POST   /api/bloodbanks/inventory
+PUT    /api/bloodbanks/inventory/{id}
 DELETE /api/bloodbanks/inventory/{id}
-GET  /api/bloodbanks/reports
+GET    /api/bloodbanks/reports
 Emergency Requests
 POST /api/emergency-requests
 GET  /api/emergency-requests
@@ -924,10 +775,138 @@ Search
 GET /api/search/global
 Public Statistics
 GET /api/stats/public
-🧩 Important Design Principles
+🔒 Security
 
-BloodLink follows several engineering principles:
+BloodLink implements multiple security controls.
 
+Authentication
+JWT access tokens
+JWT refresh tokens
+HTTP-only cookies
+Password hashing with bcrypt
+Token expiration
+Authorization
+Backend-enforced RBAC
+Role-specific API permissions
+Protected routes
+Sensitive action auditing
+API Security
+Pydantic validation
+Authentication rate limiting
+CORS configuration
+Secure environment configuration
+Audit
+
+Sensitive platform actions are recorded through audit logs.
+
+🧹 Repository Security
+
+The repository intentionally excludes sensitive/generated files.
+
+.env
+.env.*
+.venv/
+node_modules/
+dist/
+.vite/
+__pycache__/
+*.pyc
+
+Never commit:
+
+Database passwords
+JWT secrets
+Gmail App Passwords
+Google Maps API keys
+Production credentials
+Private certificates
+🚫 Google OAuth
+
+Google OAuth authentication has intentionally been removed from BloodLink.
+
+Authentication currently uses:
+
+Email + Password
+
+Google services are used for:
+
+Google Maps
+Google Geocoding
+Google Directions
+
+This keeps authentication independent from the location infrastructure.
+
+📸 Screenshots
+
+Add application screenshots to:
+
+docs/screenshots/
+
+Recommended showcase:
+
+docs/
+└── screenshots/
+    ├── landing.png
+    ├── login.png
+    ├── patient-dashboard.png
+    ├── donor-dashboard.png
+    ├── hospital-dashboard.png
+    ├── bloodbank-dashboard.png
+    ├── admin-dashboard.png
+    ├── blood-search.png
+    ├── emergency-request.png
+    ├── maps.png
+    ├── health-readiness.png
+    ├── inventory.png
+    └── analytics.png
+
+Example:
+
+![BloodLink Dashboard](docs/screenshots/patient-dashboard.png)
+🧭 User Workflow
+Patient
+Register
+   ↓
+Verify Email
+   ↓
+Login
+   ↓
+Search Blood
+   ↓
+View Compatible Donors
+   ↓
+Create Blood Request
+   ↓
+Track Request
+Donor
+Register
+   ↓
+Verify Email
+   ↓
+Complete Profile
+   ↓
+Check Health Readiness
+   ↓
+Enable Availability
+   ↓
+Receive Blood Request
+   ↓
+Accept / Decline
+   ↓
+Track Donation
+Emergency
+Emergency Request
+       ↓
+Blood Group Compatibility
+       ↓
+Nearby Donor / Facility Search
+       ↓
+Donor Matching
+       ↓
+Hospital / Blood Bank Coordination
+       ↓
+Emergency Response
+🧩 Engineering Principles
 Modular Architecture
 
 Frontend components and backend routers are separated by responsibility.
@@ -943,164 +922,72 @@ Maps
 Blood compatibility
 Search
 UI elements
-Role-Based Security
+Database-Driven Platform
 
-Permissions are enforced at the backend level rather than relying only on
+Operational data and platform statistics are retrieved from PostgreSQL rather
+than relying on static mock statistics.
+
+Backend-Enforced Authorization
+
+Security decisions are enforced at the API layer instead of relying only on
 frontend navigation.
-
-Database-Driven Data
-
-Operational data is retrieved from PostgreSQL rather than relying on
-hardcoded application statistics.
 
 Responsive Design
 
-The interface is designed for:
+The platform is designed for:
 
 Desktop
 Tablet
 Mobile
-🚫 Google OAuth
+🚀 Deployment Architecture
 
-Google OAuth authentication is intentionally not part of the current
-authentication system.
+A production deployment can follow this architecture:
 
-BloodLink currently uses:
+                         INTERNET
+                             │
+                             ▼
+                    ┌────────────────┐
+                    │ HTTPS / Proxy  │
+                    └───────┬────────┘
+                            │
+               ┌────────────┴────────────┐
+               │                         │
+               ▼                         ▼
+       React/Vite Frontend        FastAPI Backend
+                                         │
+                                         ▼
+                                    PostgreSQL
+                                         │
+                    ┌────────────────────┼─────────────────┐
+                    │                    │                 │
+                    ▼                    ▼                 ▼
+               Google Maps           Gmail SMTP      Geolocation
 
-Email + Password
+Before production deployment:
 
-for authentication.
-
-Google services are used for:
-
-Google Maps
-Google Geocoding
-Google Directions
-
-This keeps authentication independent from the mapping infrastructure.
-
-🧹 Repository Hygiene
-
-The repository intentionally excludes generated and sensitive files.
-
-Ignored files include:
-
-.env
-.env.*
-.venv/
-node_modules/
-dist/
-__pycache__/
-*.pyc
-.vite/
-
-Never commit:
-
-Database passwords
-JWT secrets
-Gmail App Passwords
-Google Maps API keys
-Production credentials
-Private certificates
-📱 Responsive Experience
-
-BloodLink is designed to provide a consistent experience across:
-
-Desktop
-Tablet
-Mobile
-
-The application includes responsive:
-
-Navigation
-Dashboards
-Maps
-Search
-Forms
-Tables
-Cards
-Analytics
-Branding
-🎨 Brand Identity
-BloodLink
-
-Healthcare Blood Donation & Emergency Response Platform
-
-BloodLink focuses on connecting the healthcare ecosystem around blood
-availability and emergency response.
-
-Code Morphix
-
-Transforming Ideas Into Innovation
-
-Code Morphix powers the technology and development identity behind the
-BloodLink platform.
-
-📸 Screenshots
-
-Add screenshots of the application here.
-
-Recommended screenshots:
-
-Landing page
-Login
-Patient dashboard
-Donor dashboard
-Hospital dashboard
-Blood Bank dashboard
-Admin dashboard
-Blood search
-Emergency request
-Google Maps resource map
-Donor health readiness
-Blood inventory
-Analytics
-Notifications
-
-Example:
-
-![BloodLink Landing Page](docs/screenshots/landing.png)
-🏆 Project Highlights
-Full-Stack
-React + TypeScript
-        +
-FastAPI + Python
-        +
-PostgreSQL
-Healthcare Workflows
-Patient
-   ↓
-Blood Request
-   ↓
-Donor Matching
-   ↓
-Hospital / Blood Bank
-   ↓
-Emergency Response
-Location Intelligence
-User Location
-      ↓
-Nearby Facilities
-      ↓
-Hospitals / Blood Banks / Emergencies
-      ↓
-Google Maps Navigation
-📈 Future Enhancements
+Replace development secrets
+Configure production CORS
+Enable HTTPS
+Configure secure cookies
+Configure production SMTP
+Restrict Google Maps API keys
+Use production PostgreSQL
+Configure logging and monitoring
+📈 Future Roadmap
 
 Potential future improvements include:
 
 Real-time WebSocket notifications
-Advanced donor recommendation models
-Hospital-to-hospital blood transfer workflows
-Advanced demand forecasting
+Advanced donor recommendation
 Blood shortage prediction
-Automated expiry alerts
+Demand forecasting
+Automated inventory alerts
+Hospital-to-hospital blood transfer
+Advanced analytics
 Mobile application
-Advanced reporting
+Background task processing
 Production observability
 Distributed caching
-Background task processing
-Advanced analytics
 Multi-region deployment
 🤝 Contribution
 
@@ -1113,7 +1000,7 @@ cd BLOODLINK_Code_Morphix
 
 git checkout -b feature/your-feature
 
-# Make changes
+# Make your changes
 
 git add .
 
@@ -1125,7 +1012,7 @@ Then create a Pull Request.
 
 🐛 Bug Reporting
 
-When reporting an issue, include:
+When reporting a bug, include:
 
 Description
 Steps to reproduce
@@ -1137,17 +1024,12 @@ Backend logs
 Screenshots when applicable
 📄 License
 
-This project is currently maintained as a Code Morphix development project.
+This project is currently maintained as a Code Morphix development
+project.
 
 Add the appropriate license before public production distribution.
 
-👨‍💻 Project
-BloodLink
-
-Healthcare Blood Donation & Emergency Response Platform
-
-Powered by Code Morphix
-
-Transforming Ideas Into Innovation
-
-<p align="center"> 🩸 <strong>BloodLink</strong> </p> <p align="center"> Connecting Blood Donors, Patients, Hospitals & Blood Banks </p> <p align="center"> <strong>Powered by Code Morphix</strong> </p> ```
+🏢 Code Morphix
+<p align="center"> <img src="public/logos/code-morphix.svg" alt="Code Morphix" width="90"/> </p> <h3 align="center">Transforming Ideas Into Innovation</h3> <p align="center"> BloodLink is powered by <strong>Code Morphix</strong>. </p>
+🩸 BloodLink
+<p align="center"> <strong>Connecting Blood Donors, Patients, Hospitals & Blood Banks</strong> </p> <p align="center"> Built with ❤️ using React, TypeScript, FastAPI and PostgreSQL. </p> <p align="center"> <strong>Powered by Code Morphix</strong> </p> ```
