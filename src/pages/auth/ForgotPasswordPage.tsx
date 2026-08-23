@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Mail, Loader2, ArrowLeft, CheckCircle2 } from "lucide-react";
-import { BloodLinkLogo } from "../../components/shared/BloodLinkLogo";
-import { CodeMorphixLogo } from "../../components/shared/CodeMorphixLogo";
 import { authApi } from "../../services/api";
 
 export function ForgotPasswordPage() {
@@ -39,9 +37,6 @@ export function ForgotPasswordPage() {
   if (sent) {
     return (
       <div className="text-center w-full">
-        <div className="mb-4 flex justify-center">
-          <BloodLinkLogo size="md" />
-        </div>
         <div className="w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center mx-auto mb-5 text-emerald-600 dark:text-emerald-400">
           <CheckCircle2 size={34} />
         </div>
@@ -61,10 +56,6 @@ export function ForgotPasswordPage() {
         >
           Use a different email address
         </button>
-
-        <div className="mt-8 pt-4 flex justify-center">
-          <CodeMorphixLogo size="sm" />
-        </div>
       </div>
     );
   }
@@ -76,9 +67,6 @@ export function ForgotPasswordPage() {
           <ArrowLeft size={13} />
           Back to sign in
         </Link>
-        <div className="mb-3">
-          <BloodLinkLogo size="md" />
-        </div>
         <h1 className="text-2xl font-bold text-foreground">Forgot your password?</h1>
         <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
           Enter your registered email address and we'll send you secure instructions to reset your password.
@@ -129,10 +117,6 @@ export function ForgotPasswordPage() {
         Remember your password?{" "}
         <Link to="/login" className="text-red-600 dark:text-red-400 font-bold hover:underline">Sign in</Link>
       </p>
-
-      <div className="mt-8 pt-4 flex justify-center">
-        <CodeMorphixLogo size="sm" />
-      </div>
     </div>
   );
 }

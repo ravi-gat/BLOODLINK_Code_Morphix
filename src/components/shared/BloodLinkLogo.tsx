@@ -49,8 +49,11 @@ export function BloodLinkLogo({
           viewBox="0 0 64 64"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
-          className="w-full h-full drop-shadow-sm"
+          className="w-full h-full drop-shadow-sm flex-shrink-0"
+          role="img"
+          aria-label="BloodLink Logo"
         >
+          <title>BloodLink</title>
           <defs>
             <linearGradient id="blGrad" x1="16" y1="4" x2="48" y2="60" gradientUnits="userSpaceOnUse">
               <stop offset="0%" stopColor="#EF4444" />
@@ -129,7 +132,7 @@ export function BloodLinkLogo({
     return (
       <Link
         to={targetHref}
-        className="inline-flex items-center hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-red-500/30 rounded-lg"
+        className="inline-flex items-center hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50 rounded-lg p-0.5"
         aria-label="BloodLink Home"
       >
         {logoGraphic}

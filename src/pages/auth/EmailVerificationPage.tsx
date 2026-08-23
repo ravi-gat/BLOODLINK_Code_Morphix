@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router";
 import { CheckCircle2, AlertCircle, Loader2, Mail, RefreshCw } from "lucide-react";
 import { authApi } from "../../services/api";
-import { BloodLinkLogo } from "../../components/shared/BloodLinkLogo";
-import { CodeMorphixLogo } from "../../components/shared/CodeMorphixLogo";
 
 export function EmailVerificationPage() {
   const [searchParams] = useSearchParams();
@@ -65,10 +63,7 @@ export function EmailVerificationPage() {
   };
 
   return (
-    <div className="w-full text-center py-6">
-      <div className="mb-5 flex justify-center">
-        <BloodLinkLogo size="md" />
-      </div>
+    <div className="w-full text-center py-4">
 
       {loading ? (
         <div className="space-y-4">
@@ -154,10 +149,6 @@ export function EmailVerificationPage() {
         </div>
       )}
 
-      {/* Powered by Code Morphix Branding */}
-      <div className="mt-8 pt-4 flex justify-center">
-        <CodeMorphixLogo size="sm" />
-      </div>
     </div>
   );
 }

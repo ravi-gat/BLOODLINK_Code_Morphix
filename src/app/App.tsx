@@ -2,9 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useThemeStore } from "../stores/useThemeStore";
 import { useAuthStore } from "../stores/useAuthStore";
-import { getRoleDashboardPath } from "../stores/useAuthStore";
-import { BloodLinkLogo } from "../components/shared/BloodLinkLogo";
 import { CodeMorphixLogo } from "../components/shared/CodeMorphixLogo";
+import { AppHeader } from "../components/shared/AppHeader";
 import { BloodCompatibilityMatrix } from "../components/shared/BloodCompatibilityMatrix";
 import { InteractiveResourceMap } from "../components/shared/InteractiveResourceMap";
 import { statsApi, type PublicStatsResponse } from "../services/api";
@@ -168,93 +167,7 @@ function StatCard({ icon: Icon, label, value, delta, color }: { icon: any; label
   );
 }
 
-// ─── Nav Auth Button ──────────────────────────────────────────────────────────
 
-function NavAuthButton() {
-  const navigate = useNavigate();
-  const { isAuthenticated, user } = useAuthStore();
-
-  if (isAuthenticated && user) {
-    return (
-      <button
-        onClick={() => navigate(getRoleDashboardPath(user.role as any))}
-        className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors"
-      >
-        <Droplets size={14} />
-        My Dashboard
-      </button>
-    );
-  }
-
-  return (
-    <div className="hidden sm:flex items-center gap-2">
-      <button onClick={() => navigate("/login")} className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground">Sign In</button>
-      <button onClick={() => navigate("/register")} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors"><Droplets size={14} /> Register</button>
-    </div>
-  );
-}
-
-// ─── Nav ──────────────────────────────────────────────────────────────────────
-
-function Nav({ view, setView, dark, setDark }: { view: View; setView: (v: View) => void; dark: boolean; setDark: (d: boolean) => void }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const navigate = useNavigate();
-  const { isAuthenticated, user, logout } = useAuthStore();
-  const roleLinks: Record<string, { label: string; path: string }[]> = {
-    patient: [{ label: "Dashboard", path: "/patient/dashboard" }, { label: "Search Blood", path: "/patient/search" }, { label: "Requests", path: "/patient/history" }, { label: "Notifications", path: "/patient/notifications" }, { label: "Profile", path: "/patient/profile" }],
-    donor: [{ label: "Dashboard", path: "/donor/dashboard" }, { label: "Requests", path: "/donor/requests" }, { label: "Donations", path: "/donor/history" }, { label: "Notifications", path: "/donor/notifications" }, { label: "Profile", path: "/donor/profile" }],
-    hospital: [{ label: "Dashboard", path: "/hospital/dashboard" }, { label: "Blood Requests", path: "/hospital/inventory" }, { label: "Emergency Requests", path: "/hospital/emergency" }, { label: "Patients", path: "/hospital/patients" }, { label: "Notifications", path: "/hospital/notifications" }],
-    bloodbank: [{ label: "Dashboard", path: "/bloodbank/dashboard" }, { label: "Inventory", path: "/bloodbank/inventory" }, { label: "Blood Requests", path: "/bloodbank/requests" }, { label: "Donations", path: "/bloodbank/collection" }, { label: "Notifications", path: "/bloodbank/notifications" }],
-    admin: [{ label: "Dashboard", path: "/admin/dashboard" }, { label: "Users", path: "/admin/users" }, { label: "Donors", path: "/admin/donors" }, { label: "Hospitals", path: "/admin/hospitals" }, { label: "Blood Banks", path: "/admin/bloodbanks" }, { label: "Reports", path: "/admin/reports" }],
-  };
-  const navLinks = isAuthenticated && user ? roleLinks[user.role] : [{ label: "Home", path: "/" }];
-  const goHome = () => { setView("landing"); navigate("/"); };
-
-  return (
-    <nav className="sticky top-0 z-50 bg-card/90 backdrop-blur-md border-b border-border">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-        <BloodLinkLogo size="md" />
-
-        <div className="hidden md:flex items-center gap-1">
-          {navLinks.map(({ label, path }) => (
-            <button
-              key={path}
-              onClick={() => path === "/" ? goHome() : navigate(path)}
-              className="px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors text-muted-foreground hover:text-foreground hover:bg-muted"
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setDark(!dark)}
-            className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors"
-          >
-            {dark ? <Sun size={16} /> : <Moon size={16} />}
-          </button>
-          <NavAuthButton />
-          {isAuthenticated && user && <button onClick={() => { logout(); goHome(); }} className="hidden sm:flex px-3 py-2 text-sm font-medium text-muted-foreground hover:text-red-600">Logout</button>}
-          <button className="md:hidden w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted" onClick={() => setMenuOpen(!menuOpen)}>
-            {menuOpen ? <X size={18} /> : <Menu size={18} />}
-          </button>
-        </div>
-      </div>
-      {menuOpen && (
-        <div className="md:hidden border-t border-border bg-card px-4 py-3 flex flex-col gap-1">
-          {navLinks.map(({ label, path }) => (
-            <button key={path} onClick={() => { path === "/" ? goHome() : navigate(path); setMenuOpen(false); }} className="px-3 py-2 rounded-lg text-sm font-medium text-left transition-colors text-muted-foreground hover:bg-muted">
-              {label}
-            </button>
-          ))}
-          {!isAuthenticated && <><button onClick={() => navigate("/login")} className="px-3 py-2 text-left text-sm font-medium text-muted-foreground">Sign In</button><button onClick={() => navigate("/register")} className="px-3 py-2 text-left text-sm font-medium text-muted-foreground">Register</button></>}
-          {isAuthenticated && <button onClick={() => { logout(); goHome(); }} className="px-3 py-2 text-left text-sm font-medium text-red-600">Logout</button>}
-        </div>
-      )}
-    </nav>
-  );
-}
 
 function Landing({ setView }: { setView: (v: View) => void }) {
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
@@ -424,7 +337,7 @@ function Landing({ setView }: { setView: (v: View) => void }) {
       </section>
 
       {/* Blood Compatibility Matrix Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16">
+      <section id="compatibility-matrix" className="max-w-7xl mx-auto px-4 sm:px-6 py-16">
         <div className="text-center mb-10">
           <Badge text="Clinical Matching" color="#E53935" />
           <h2 className="text-3xl font-bold text-foreground mt-3">Interactive Blood Compatibility Explorer</h2>
@@ -512,7 +425,7 @@ function Landing({ setView }: { setView: (v: View) => void }) {
       </section>
 
       {/* Live Map & Facilities Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16">
+      <section id="facilities-map" className="max-w-7xl mx-auto px-4 sm:px-6 py-16">
         <div className="text-center mb-10">
           <Badge text="Live Geolocation" color="#1565C0" />
           <h2 className="text-3xl font-bold text-foreground mt-3">Verified Hospitals & Blood Banks Map</h2>
@@ -577,7 +490,7 @@ function Landing({ setView }: { setView: (v: View) => void }) {
       </section>
 
       {/* FAQs */}
-      <section className="max-w-3xl mx-auto px-4 sm:px-6 py-20">
+      <section id="faqs-section" className="max-w-3xl mx-auto px-4 sm:px-6 py-20">
         <div className="text-center mb-12">
           <Badge text="FAQs" color="#1565C0" />
           <h2 className="text-3xl font-bold text-foreground mt-3">Frequently Asked Questions</h2>
@@ -1312,17 +1225,19 @@ function AdminDashboard() {
 
 export default function App() {
   const [view, setView] = useState<View>("landing");
-  const { dark, setDark } = useThemeStore();
+  const { dark } = useThemeStore();
 
   return (
     <div className={dark ? "dark" : ""} style={{ fontFamily: "'Inter', sans-serif" }}>
-      <div className="min-h-screen bg-background text-foreground">
-        <Nav view={view} setView={setView} dark={dark} setDark={setDark} />
-        {view === "landing" && <Landing setView={setView} />}
-        {view === "donor" && <DonorDashboard />}
-        {view === "patient" && <PatientDashboard />}
-        {view === "hospital" && <HospitalDashboard />}
-        {view === "admin" && <AdminDashboard />}
+      <div className="min-h-screen bg-background text-foreground flex flex-col">
+        <AppHeader variant="landing" />
+        <main className="flex-1">
+          {view === "landing" && <Landing setView={setView} />}
+          {view === "donor" && <DonorDashboard />}
+          {view === "patient" && <PatientDashboard />}
+          {view === "hospital" && <HospitalDashboard />}
+          {view === "admin" && <AdminDashboard />}
+        </main>
       </div>
     </div>
   );

@@ -2,8 +2,6 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Eye, EyeOff, Loader2, LogIn, Mail, Lock, AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
 import { useAuthStore, getRoleDashboardPath } from "../../stores/useAuthStore";
-import { BloodLinkLogo } from "../../components/shared/BloodLinkLogo";
-import { CodeMorphixLogo } from "../../components/shared/CodeMorphixLogo";
 import { authApi } from "../../services/api";
 
 export function LoginPage() {
@@ -61,12 +59,8 @@ export function LoginPage() {
 
   return (
     <div className="w-full">
-      {/* Brand Header */}
-      <div className="mb-8 text-center sm:text-left">
-        <div className="mb-4 flex items-center justify-between">
-          <BloodLinkLogo size="md" />
-          <CodeMorphixLogo size="xs" showText={false} className="lg:hidden" />
-        </div>
+      {/* Form Header */}
+      <div className="mb-6 text-center sm:text-left">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
           Welcome back
         </h1>
@@ -160,10 +154,6 @@ export function LoginPage() {
         <Link to="/register" className="text-red-600 dark:text-red-400 font-bold hover:underline">
           Register now
         </Link>
-      </div>
-
-      <div className="mt-8 pt-4 flex justify-center">
-        <CodeMorphixLogo size="sm" />
       </div>
     </div>
   );

@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams, useLocation, Link } from "react-router";
 import { Eye, EyeOff, Loader2, CheckCircle2, KeyRound } from "lucide-react";
-import { BloodLinkLogo } from "../../components/shared/BloodLinkLogo";
-import { CodeMorphixLogo } from "../../components/shared/CodeMorphixLogo";
 import { authApi } from "../../services/api";
 
 export function ResetPasswordPage() {
@@ -56,9 +54,6 @@ export function ResetPasswordPage() {
   if (done) {
     return (
       <div className="text-center w-full">
-        <div className="mb-4 flex justify-center">
-          <BloodLinkLogo size="md" />
-        </div>
         <div className="w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center mx-auto mb-5 text-emerald-600 dark:text-emerald-400">
           <CheckCircle2 size={34} />
         </div>
@@ -72,10 +67,6 @@ export function ResetPasswordPage() {
         >
           Sign In Now →
         </Link>
-
-        <div className="mt-8 pt-4 flex justify-center">
-          <CodeMorphixLogo size="sm" />
-        </div>
       </div>
     );
   }
@@ -83,9 +74,6 @@ export function ResetPasswordPage() {
   return (
     <div className="w-full">
       <div className="mb-6">
-        <div className="mb-3">
-          <BloodLinkLogo size="md" />
-        </div>
         <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/50 flex items-center justify-center mb-4 text-red-600 dark:text-red-400">
           <KeyRound size={24} />
         </div>
@@ -197,10 +185,6 @@ export function ResetPasswordPage() {
         <Link to="/login" className="text-red-600 dark:text-red-400 font-bold hover:underline">
           Sign in
         </Link>
-      </div>
-
-      <div className="mt-8 pt-4 flex justify-center">
-        <CodeMorphixLogo size="sm" />
       </div>
     </div>
   );

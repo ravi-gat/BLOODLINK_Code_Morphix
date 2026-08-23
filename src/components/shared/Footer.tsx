@@ -1,42 +1,27 @@
-import { useThemeStore } from "../../stores/useThemeStore";
-import { BloodLinkLogo } from "./BloodLinkLogo";
+import { CodeMorphixLogo } from "./CodeMorphixLogo";
 
 export function Footer() {
-  const { dark } = useThemeStore();
-
   return (
-    <footer
-      className={`border-t ${
-        dark ? "border-gray-800 bg-gray-950" : "border-gray-200 bg-gray-50"
-      } py-6 px-4`}
-    >
+    <footer className="border-t border-border bg-card/50 py-4 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <BloodLinkLogo size="sm" />
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <span>© 2026 BloodLink Health Systems.</span>
+            <span className="hidden sm:inline text-border">·</span>
+            <CodeMorphixLogo size="xs" />
           </div>
 
-          <div
-            className={`text-xs ${
-              dark ? "text-gray-500" : "text-gray-600"
-            }`}
-          >
-            <p>© 2026 BloodLink. AI-Enabled Blood Management Network</p>
-          </div>
-
-          <div
-            className={`text-xs ${
-              dark ? "text-gray-500" : "text-gray-600"
-            }`}
-          >
-            <a
-              href="#"
-              className="hover:text-red-600 transition-colors mr-4"
-            >
+          <div className="flex items-center gap-4">
+            <a href="#" className="hover:text-foreground transition-colors">
               Privacy Policy
             </a>
-            <a href="#" className="hover:text-red-600 transition-colors">
+            <span>·</span>
+            <a href="#" className="hover:text-foreground transition-colors">
               Terms of Service
+            </a>
+            <span>·</span>
+            <a href="#" className="hover:text-foreground transition-colors">
+              Clinical Compliance
             </a>
           </div>
         </div>

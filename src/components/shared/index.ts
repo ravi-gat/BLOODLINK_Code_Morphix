@@ -18,3 +18,5 @@ export { CodeMorphixLogo } from "./CodeMorphixLogo";
 export { BloodCompatibilityMatrix } from "./BloodCompatibilityMatrix";
 export { InteractiveResourceMap } from "./InteractiveResourceMap";
 export { GoogleResourceMap } from "./GoogleResourceMap";
+export { AppHeader } from "./AppHeader";
+export { CodeMorphixBranding } from "./CodeMorphixBranding";

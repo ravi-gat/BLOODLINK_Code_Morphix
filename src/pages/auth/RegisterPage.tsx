@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Eye, EyeOff, Loader2, CheckCircle, Circle, UserPlus, ArrowLeft, Mail, AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, Loader2, UserPlus, Mail, Lock, User, Phone, MapPin, Building2, Droplets, CheckCircle2, RefreshCw } from "lucide-react";
 import { useAuthStore, getRoleDashboardPath } from "../../stores/useAuthStore";
-import { BloodLinkLogo } from "../../components/shared/BloodLinkLogo";
-import { CodeMorphixLogo } from "../../components/shared/CodeMorphixLogo";
 import { authApi } from "../../services/api";
 import type { UserRole, BloodGroup } from "../../types";
 
@@ -191,9 +189,6 @@ const set = (k: keyof typeof form, v: string) => {
   if (verificationPending) {
     return (
       <div className="w-full text-center">
-        <div className="mb-4 flex justify-center">
-          <BloodLinkLogo size="md" />
-        </div>
         <div className="w-16 h-16 rounded-2xl bg-red-100 dark:bg-red-950/50 flex items-center justify-center mx-auto mb-5 text-red-600 dark:text-red-400">
           <Mail size={32} />
         </div>
@@ -234,22 +229,14 @@ const set = (k: keyof typeof form, v: string) => {
             )}
           </button>
         </div>
-
-        <div className="mt-8 pt-4 flex justify-center">
-          <CodeMorphixLogo size="sm" />
-        </div>
       </div>
     );
   }
 
   return (
     <div className="w-full">
-      {/* Brand Header */}
+      {/* Form Header */}
       <div className="mb-5 text-center sm:text-left">
-        <div className="mb-2.5 flex items-center justify-between">
-          <BloodLinkLogo size="md" />
-          <CodeMorphixLogo size="xs" showText={false} className="lg:hidden" />
-        </div>
         <h2 className="text-2xl font-bold text-foreground">Create your account</h2>
         <p className="text-muted-foreground mt-1 text-xs">
           Join verified donors, hospitals, and patients in saving lives.
@@ -563,11 +550,6 @@ const set = (k: keyof typeof form, v: string) => {
           Sign in
         </Link>
       </p>
-
-      {/* Powered by Code Morphix Branding */}
-      <div className="mt-8 pt-4 flex justify-center">
-        <CodeMorphixLogo size="sm" />
-      </div>
     </div>
   );
 }
