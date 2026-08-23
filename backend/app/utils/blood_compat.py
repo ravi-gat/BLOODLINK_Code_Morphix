@@ -66,3 +66,31 @@ def compatibility_score(donor_bg: BloodGroup, recipient_bg: BloodGroup) -> float
     if donor_bg == BloodGroup.O_NEG:
         return 0.8
     return 0.6
+
+
+# ── String-based compatibility lookups for APIs and UI ────────────────────────
+CAN_RECEIVE_FROM_STR: dict[str, list[str]] = {
+    "O-": ["O-"],
+    "O+": ["O-", "O+"],
+    "A-": ["O-", "A-"],
+    "A+": ["O-", "O+", "A-", "A+"],
+    "B-": ["O-", "B-"],
+    "B+": ["O-", "O+", "B-", "B+"],
+    "AB-": ["O-", "A-", "B-", "AB-"],
+    "AB+": ["O-", "O+", "A-", "A+", "B-", "B+", "AB-", "AB+"],
+}
+
+CAN_DONATE_TO_STR: dict[str, list[str]] = {
+    "O-": ["O-", "O+", "A-", "A+", "B-", "B+", "AB-", "AB+"],
+    "O+": ["O+", "A+", "B+", "AB+"],
+    "A-": ["A-", "A+", "AB-", "AB+"],
+    "A+": ["A+", "AB+"],
+    "B-": ["B-", "B+", "AB-", "AB+"],
+    "B+": ["B+", "AB+"],
+    "AB-": ["AB-", "AB+"],
+    "AB+": ["AB+"],
+}
+
+UNIVERSAL_DONORS: set[str] = {"O-"}
+UNIVERSAL_RECIPIENTS: set[str] = {"AB+"}
+

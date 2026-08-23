@@ -16,6 +16,7 @@ import { RegisterPage } from "../pages/auth/RegisterPage";
 import { ForgotPasswordPage } from "../pages/auth/ForgotPasswordPage";
 import { OTPVerificationPage } from "../pages/auth/OTPVerificationPage";
 import { ResetPasswordPage } from "../pages/auth/ResetPasswordPage";
+import { EmailVerificationPage } from "../pages/auth/EmailVerificationPage";
 
 // Shared pages (reused by all roles)
 import { NotificationsPage } from "../pages/shared/NotificationsPage";
@@ -66,10 +67,12 @@ import { AdminAnalyticsPage } from "../pages/admin/AdminAnalyticsPage";
 
 // 404
 import { NotFoundPage } from "../pages/shared/NotFoundPage";
+import { TitleManager } from "../components/shared/TitleManager";
 
 export function AppRouter() {
   return (
     <BrowserRouter>
+      <TitleManager />
       <Routes>
         {/* ── Auth routes ─────────────────────────────────────────── */}
         <Route element={<AuthLayout />}>
@@ -78,6 +81,7 @@ export function AppRouter() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/verify-otp" element={<OTPVerificationPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/verify-email" element={<EmailVerificationPage />} />
         </Route>
 
         {/* ── Patient routes ──────────────────────────────────────── */}

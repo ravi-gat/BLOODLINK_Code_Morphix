@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useThemeStore } from "../stores/useThemeStore";
 import { useAuthStore } from "../stores/useAuthStore";
 import { getRoleDashboardPath } from "../stores/useAuthStore";
+import { BloodLinkLogo } from "../components/shared/BloodLinkLogo";
+import { CodeMorphixLogo } from "../components/shared/CodeMorphixLogo";
+import { BloodCompatibilityMatrix } from "../components/shared/BloodCompatibilityMatrix";
+import { InteractiveResourceMap } from "../components/shared/InteractiveResourceMap";
+import { statsApi, type PublicStatsResponse } from "../services/api";
 import {
   Droplets,
   Search,
@@ -85,27 +90,24 @@ const DONORS = [
   { name: "Deepa Reddy", blood: "A-", dist: "5.2 km", avail: false, rating: 4.9, donations: 11, lastDonated: "35 days ago" },
 ];
 
-const TESTIMONIALS = [
+const COMPLIANCE_ITEMS = [
   {
-    name: "Dr. Meera Krishnan",
-    role: "Cardiologist, Apollo Hospitals",
-    text: "BloodLink has transformed how we handle emergency transfusions. Response time dropped from hours to under 20 minutes. It has genuinely saved lives in our ICU.",
-    avatar: "MK",
-    rating: 5,
+    title: "HIPAA & NDHM Compliant",
+    desc: "End-to-end data encryption with complete medical record privacy and patient confidentiality.",
+    icon: Shield,
+    color: "#43A047",
   },
   {
-    name: "Suresh Iyer",
-    role: "Registered Blood Donor",
-    text: "I've donated 14 times through BloodLink. The AI eligibility check reminds me when I'm ready and matches me with nearby emergencies instantly. Incredibly well designed.",
-    avatar: "SI",
-    rating: 5,
+    title: "Verified Healthcare Network",
+    desc: "Direct integration with licensed blood repositories and accredited medical institutions.",
+    icon: Activity,
+    color: "#1565C0",
   },
   {
-    name: "Kavitha Nambiar",
-    role: "Patient's Family Member",
-    text: "When my father needed O- blood urgently, BloodLink found three compatible donors within 2 km in under 5 minutes. I cannot express enough gratitude.",
-    avatar: "KN",
-    rating: 5,
+    title: "Explainable AI Matching",
+    desc: "Transparent multi-factor scoring matching blood groups, proximity, and donation cooldown cycles.",
+    icon: Zap,
+    color: "#E53935",
   },
 ];
 
@@ -211,12 +213,7 @@ function Nav({ view, setView, dark, setDark }: { view: View; setView: (v: View) 
   return (
     <nav className="sticky top-0 z-50 bg-card/90 backdrop-blur-md border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-        <button onClick={goHome} className="flex items-center gap-2.5 flex-shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center">
-            <Droplets size={18} className="text-white" />
-          </div>
-          <span className="font-bold text-lg text-foreground tracking-tight">BloodLink</span>
-        </button>
+        <BloodLinkLogo size="md" />
 
         <div className="hidden md:flex items-center gap-1">
           {navLinks.map(({ label, path }) => (
@@ -259,13 +256,29 @@ function Nav({ view, setView, dark, setDark }: { view: View; setView: (v: View) 
   );
 }
 
-// ─── Landing ─────────────────────────────────────────────────────────────────
-
 function Landing({ setView }: { setView: (v: View) => void }) {
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
   const [bloodGroup, setBloodGroup] = useState("");
   const [city, setCity] = useState("");
+  const [stats, setStats] = useState<PublicStatsResponse>({
+    success: true,
+    registered_donors: 0,
+    registered_hospitals: 0,
+    registered_bloodbanks: 0,
+    completed_donations: 0,
+    active_requests: 0,
+    lives_saved: 0,
+  });
   const navigate = useNavigate();
+
+  useEffect(() => {
+    statsApi
+      .getPublicStats()
+      .then((data) => {
+        if (data) setStats(data);
+      })
+      .catch(() => undefined);
+  }, []);
 
   return (
     <div className="bg-background">
@@ -280,7 +293,7 @@ function Landing({ setView }: { setView: (v: View) => void }) {
             <div className="text-white">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/15 backdrop-blur-sm text-sm font-medium mb-6">
                 <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                847 donors available near you right now
+                Verified clinical blood donation network
               </div>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight mb-6">
                 Every Second<br />
@@ -350,8 +363,13 @@ function Landing({ setView }: { setView: (v: View) => void }) {
                   </div>
                 </div>
                 <button
-                  onClick={() => navigate("/login")}
-                  className="w-full py-3 rounded-xl bg-white text-red-700 font-semibold flex items-center justify-center gap-2 hover:bg-red-50 transition-colors shadow-md mt-1"
+                  onClick={() => {
+                    const params = new URLSearchParams();
+                    if (bloodGroup) params.set("blood_group", bloodGroup);
+                    if (city) params.set("city", city);
+                    navigate(`/patient/search?${params.toString()}`);
+                  }}
+                  className="w-full py-3 rounded-xl bg-white text-red-700 font-semibold flex items-center justify-center gap-2 hover:bg-red-50 transition-colors shadow-md mt-1 cursor-pointer"
                 >
                   <Search size={16} />
                   Search Donors
@@ -367,10 +385,10 @@ function Landing({ setView }: { setView: (v: View) => void }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { icon: Users, label: "Registered Donors", value: "1,24,850", delta: "+2.4%", color: "#E53935" },
-              { icon: Heart, label: "Lives Saved", value: "48,310", delta: "+8.1%", color: "#43A047" },
-              { icon: AlertTriangle, label: "Blood Requests Today", value: "284", delta: "Live", color: "#F9A825" },
-              { icon: Activity, label: "Available Donors Now", value: "4,192", delta: "Online", color: "#1565C0" },
+              { icon: Users, label: "Registered Donors", value: stats.registered_donors.toLocaleString(), delta: "Verified DB", color: "#E53935" },
+              { icon: Heart, label: "Lives Saved", value: stats.lives_saved.toLocaleString(), delta: "Completed", color: "#43A047" },
+              { icon: AlertTriangle, label: "Active Requests", value: stats.active_requests.toLocaleString(), delta: "Live DB", color: "#F9A825" },
+              { icon: Activity, label: "Hospitals & Blood Banks", value: (stats.registered_hospitals + stats.registered_bloodbanks).toLocaleString(), delta: "Network", color: "#1565C0" },
             ].map((s) => (
               <StatCard key={s.label} {...s} />
             ))}
@@ -405,6 +423,18 @@ function Landing({ setView }: { setView: (v: View) => void }) {
         </div>
       </section>
 
+      {/* Blood Compatibility Matrix Section */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16">
+        <div className="text-center mb-10">
+          <Badge text="Clinical Matching" color="#E53935" />
+          <h2 className="text-3xl font-bold text-foreground mt-3">Interactive Blood Compatibility Explorer</h2>
+          <p className="text-muted-foreground text-sm max-w-xl mx-auto mt-2">
+            Understand Rh-antigen dynamics, universal donors, and patient receiving matrices before requesting transfusions.
+          </p>
+        </div>
+        <BloodCompatibilityMatrix />
+      </section>
+
       {/* AI Matching Banner */}
       <section className="bg-gradient-to-r from-blue-900 to-blue-700 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
@@ -416,7 +446,12 @@ function Landing({ setView }: { setView: (v: View) => void }) {
                 Our proprietary AI model processes over 40 compatibility signals — including rare antigen compatibility, travel distance, donor health history, and historical response rates — to surface the three most likely-to-respond, safest donors for every request.
               </p>
               <ul className="space-y-3">
-                {["98.3% match accuracy on critical blood types", "Average donor response: 8 minutes", "Explainable AI — see why each donor was ranked", "Continuous learning from 48,000+ past matches"].map((item) => (
+                {[
+                  "Antigen & blood group compatibility validation",
+                  "Real-time geolocation & hospital proximity routing",
+                  "Explainable AI — see why each donor was ranked",
+                  "Automated notification dispatch to active eligible donors",
+                ].map((item) => (
                   <li key={item} className="flex items-center gap-3 text-blue-100 text-sm">
                     <CheckCircle size={16} className="text-green-400 flex-shrink-0" />
                     {item}
@@ -476,31 +511,38 @@ function Landing({ setView }: { setView: (v: View) => void }) {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {/* Live Map & Facilities Section */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16">
+        <div className="text-center mb-10">
+          <Badge text="Live Geolocation" color="#1565C0" />
+          <h2 className="text-3xl font-bold text-foreground mt-3">Verified Hospitals & Blood Banks Map</h2>
+          <p className="text-muted-foreground text-sm max-w-xl mx-auto mt-2">
+            Locate certified regional blood centers, clinical blood inventories, and real-time emergency locations nationwide.
+          </p>
+        </div>
+        <InteractiveResourceMap />
+      </section>
+
+      {/* Compliance & Standards */}
       <section className="bg-card border-y border-border py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
-            <Badge text="Testimonials" color="#43A047" />
-            <h2 className="text-3xl font-bold text-foreground mt-3">Trusted by Donors, Patients & Hospitals</h2>
+            <Badge text="Clinical Standards" color="#43A047" />
+            <h2 className="text-3xl font-bold text-foreground mt-3">Enterprise Healthcare Security & Compliance</h2>
           </div>
           <div className="grid sm:grid-cols-3 gap-6">
-            {TESTIMONIALS.map((t) => (
-              <div key={t.name} className="bg-background rounded-2xl p-6 border border-border">
-                <div className="flex gap-1 mb-4">
-                  {Array.from({ length: t.rating }).map((_, i) => (
-                    <Star key={i} size={14} fill="#F9A825" className="text-yellow-400" />
-                  ))}
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-5">&ldquo;{t.text}&rdquo;</p>
-                <div className="flex items-center gap-3">
-                  <Avatar initials={t.avatar} size="sm" />
-                  <div>
-                    <div className="text-sm font-semibold text-foreground">{t.name}</div>
-                    <div className="text-xs text-muted-foreground">{t.role}</div>
+            {COMPLIANCE_ITEMS.map((c) => {
+              const Icon = c.icon;
+              return (
+                <div key={c.title} className="bg-background rounded-2xl p-6 border border-border">
+                  <div className="w-12 h-12 rounded-xl mb-4 flex items-center justify-center" style={{ background: c.color + "18" }}>
+                    <Icon size={24} style={{ color: c.color }} />
                   </div>
+                  <h3 className="text-base font-semibold text-foreground mb-2">{c.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{c.desc}</p>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -598,8 +640,12 @@ function Landing({ setView }: { setView: (v: View) => void }) {
               </ul>
             </div>
           </div>
-          <div className="border-t border-border pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
-            <span>© 2024 BloodLink Health Technologies Pvt. Ltd. All rights reserved.</span>
+          <div className="border-t border-border pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
+            <div className="flex items-center gap-3">
+              <span>© 2026 BloodLink Health Technologies.</span>
+              <span className="text-border">|</span>
+              <CodeMorphixLogo size="xs" />
+            </div>
             <div className="flex gap-4">
               <a href="#" className="hover:text-foreground transition-colors">Privacy Policy</a>
               <a href="#" className="hover:text-foreground transition-colors">Terms of Service</a>
@@ -1100,12 +1146,12 @@ function AdminDashboard() {
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
         {[
-          { label: "Total Users", value: "2,84,310", color: "#E53935" },
-          { label: "Active Donors", value: "1,24,850", color: "#1565C0" },
-          { label: "Hospitals", value: "847", color: "#43A047" },
-          { label: "Blood Banks", value: "312", color: "#F9A825" },
-          { label: "Active Requests", value: "284", color: "#7C3AED" },
-          { label: "Lives Saved", value: "48,310", color: "#DB2777" },
+          { label: "Total Users", value: "—", color: "#E53935" },
+          { label: "Active Donors", value: "—", color: "#1565C0" },
+          { label: "Hospitals", value: "—", color: "#43A047" },
+          { label: "Blood Banks", value: "—", color: "#F9A825" },
+          { label: "Active Requests", value: "—", color: "#7C3AED" },
+          { label: "Lives Saved", value: "—", color: "#DB2777" },
         ].map((k) => (
           <div key={k.label} className="bg-card rounded-2xl border border-border p-4 text-center">
             <div className="text-xl font-extrabold font-mono" style={{ color: k.color }}>{k.value}</div>

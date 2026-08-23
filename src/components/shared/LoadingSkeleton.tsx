@@ -44,3 +44,12 @@ export function SkeletonPage() {
     </div>
   );
 }
+
+// Default export for easier usage
+export const LoadingSkeleton = {
+  SkeletonCard,
+  SkeletonRow,
+  SkeletonPage,
+};
+
+export default LoadingSkeleton;

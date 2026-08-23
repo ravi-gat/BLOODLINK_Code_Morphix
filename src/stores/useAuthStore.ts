@@ -1,25 +1,17 @@
 import { create } from "zustand";
-import type { User, UserRole, RegisterData } from "../types";
-import { authApi, ApiError } from "../services/api";
+import type { User, UserRole, RegisterData, BloodGroup } from "../types";
+import { authApi } from "../services/api";
 
 interface AuthStore {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string, role: UserRole) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
+  login: (email: string, password: string, role?: UserRole) => Promise<void>;
+  register: (data: RegisterData) => Promise<{ requiresVerification: boolean }>;
   logout: () => void;
   setUser: (user: User) => void;
   restoreSession: () => Promise<void>;
 }
-
-export const DEMO_CREDENTIALS: Record<UserRole, { email: string }> = {
-  patient: { email: "patient@bloodlink.demo" },
-  donor: { email: "donor@bloodlink.demo" },
-  hospital: { email: "hospital@bloodlink.demo" },
-  bloodbank: { email: "bloodbank@bloodlink.demo" },
-  admin: { email: "admin@bloodlink.demo" },
-};
 
 function toAppUser(apiUser: {
   id: string;
@@ -35,15 +27,16 @@ function toAppUser(apiUser: {
   const initials = apiUser.name
     .split(" ")
     .map((n) => n[0])
+    .filter(Boolean)
     .join("")
     .toUpperCase()
-    .slice(0, 2);
+    .slice(0, 2) || "U";
 
   return {
     id: apiUser.id,
     name: apiUser.name,
     email: apiUser.email,
-    role: apiUser.role as UserRole,
+    role: apiUser.role.toLowerCase() as UserRole,
     bloodGroup: apiUser.blood_group as User["bloodGroup"],
     phone: apiUser.phone,
     city: apiUser.city,
@@ -68,7 +61,11 @@ export const useAuthStore = create<AuthStore>()((set) => ({
     set({ isLoading: true });
     try {
       const result = await authApi.login(email, password, role);
-      set({ user: toAppUser(result.user), isAuthenticated: true, isLoading: false });
+      if (result.user) {
+        set({ user: toAppUser(result.user), isAuthenticated: true, isLoading: false });
+      } else {
+        set({ isLoading: false });
+      }
     } catch (error) {
       set({ isLoading: false });
       throw error;
@@ -85,10 +82,22 @@ export const useAuthStore = create<AuthStore>()((set) => ({
         city: data.city,
         role: data.role,
         blood_group: data.bloodGroup,
+        address: data.address,
+        hospital_name: data.hospitalName,
+        blood_bank_name: data.bloodBankName,
+        registration_number: data.registrationNumber,
         password: data.password,
         confirm_password: data.confirmPassword,
       });
-      set({ user: toAppUser(result.user), isAuthenticated: true, isLoading: false });
+
+      if (result.user && result.access_token) {
+        set({ user: toAppUser(result.user), isAuthenticated: true, isLoading: false });
+        return { requiresVerification: false };
+      } else {
+        // User created in PENDING verification state
+        set({ isLoading: false });
+        return { requiresVerification: true };
+      }
     } catch (error) {
       set({ isLoading: false });
       throw error;
@@ -108,7 +117,11 @@ export const useAuthStore = create<AuthStore>()((set) => ({
     set({ isLoading: true });
     try {
       const result = await authApi.me();
-      set({ user: toAppUser(result.user), isAuthenticated: true, isLoading: false });
+      if (result.user) {
+        set({ user: toAppUser(result.user), isAuthenticated: true, isLoading: false });
+      } else {
+        set({ user: null, isAuthenticated: false, isLoading: false });
+      }
     } catch {
       set({ user: null, isAuthenticated: false, isLoading: false });
     }

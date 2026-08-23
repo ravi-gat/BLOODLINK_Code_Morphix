@@ -29,11 +29,7 @@ from sqlalchemy import (
     ForeignKey,
 )
 from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
-
-def _now():
-    return datetime.now(timezone.utc)
-
+from sqlalchemy.sql import func
 
 from ..core.database import Base
 from .enums import BloodGroup, RequestStatus
@@ -91,7 +87,13 @@ class BloodInventory(Base):
         nullable=False,
     )
 
-    updated_at = Column("updatedAt", DateTime(timezone=True), default=_now, onupdate=_now, nullable=False)
+    updated_at = Column(
+        "updatedAt",
+        DateTime(),
+        default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
 
     # ----------------------------------------------------------------
     # Relationships
@@ -173,8 +175,19 @@ class BloodRequest(Base):
     # The DB column is "notes" (not "medical_notes" or "medicalNotes")
     notes = Column(String, nullable=True)
 
-    created_at = Column("createdAt", DateTime(), nullable=False)
-    updated_at = Column("updatedAt", DateTime(), nullable=False)
+    created_at = Column(
+        "createdAt",
+        DateTime(),
+        default=func.now(),
+        nullable=False,
+    )
+    updated_at = Column(
+        "updatedAt",
+        DateTime(),
+        default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
 
     # ----------------------------------------------------------------
     # Relationships
@@ -250,12 +263,22 @@ class Donation(Base):
 
     units = Column(Integer, nullable=False)
 
-    donation_date = Column("donationDate", DateTime(timezone=True), default=_now, nullable=False)
+    donation_date = Column(
+        "donationDate",
+        DateTime(),
+        default=func.now(),
+        nullable=False,
+    )
 
     # VARCHAR in DB — not a PG enum
     status = Column(String(50), nullable=False)
 
-    created_at = Column("createdAt", DateTime(), nullable=False)
+    created_at = Column(
+        "createdAt",
+        DateTime(),
+        default=func.now(),
+        nullable=False,
+    )
 
     # ----------------------------------------------------------------
     # Relationships

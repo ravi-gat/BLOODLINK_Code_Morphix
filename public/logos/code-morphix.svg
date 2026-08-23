@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" fill="none">
+  <defs>
+    <!-- Circular Path for Top Text: CODE MORPHICX -->
+    <path id="topArc" d="M 90 250 A 160 160 0 0 1 410 250" fill="none" />
+    <!-- Circular Path for Bottom Text: TRANSFORMING IDEAS INTO INNOVATION -->
+    <path id="bottomArc" d="M 410 250 A 160 160 0 0 1 90 250" fill="none" />
+  </defs>
+
+  <!-- Outer Dashed / Dotted Tracking Ring -->
+  <circle cx="250" cy="250" r="185" stroke="#E2E8F0" stroke-width="1.5" stroke-dasharray="4 4" fill="none" />
+
+  <!-- Top Curved Text: CODE MORPHICX -->
+  <text font-family="'Inter', 'Montserrat', sans-serif" font-size="28" font-weight="800" fill="#2E7D32" letter-spacing="4">
+    <textPath href="#topArc" startOffset="50%" text-anchor="middle">
+      CODE MORPHICX
+    </textPath>
+  </text>
+
+  <!-- Small Diamond Accent Stars -->
+  <g fill="#2E7D32">
+    <polygon points="80,240 85,245 80,250 75,245" />
+    <polygon points="420,240 425,245 420,250 415,245" />
+  </g>
+
+  <!-- Bottom Curved Text: TRANSFORMING IDEAS INTO INNOVATION -->
+  <text font-family="'Inter', 'Montserrat', sans-serif" font-size="16" font-weight="600" fill="#8E44AD" letter-spacing="3">
+    <textPath href="#bottomArc" startOffset="50%" text-anchor="middle">
+      TRANSFORMING IDEAS INTO INNOVATION
+    </textPath>
+  </text>
+
+  <!-- Central Geometric Origami / Pinwheel Vortex (8 Segments) -->
+  <g transform="translate(250, 250)">
+    <!-- Segment 1: Red/Crimson (Top-Left) -->
+    <path d="M -15,-65 L 15,-65 L 35,-35 L 20,-35 L 5,-50 L -15,-50 Z" fill="#991B1B" />
+    
+    <!-- Segment 2: Light Red/Orange-Red (Top-Right) -->
+    <path d="M 15,-65 L 45,-45 L 30,-20 L 15,-30 L 25,-45 L 0,-55 Z" fill="#C0392B" transform="rotate(45)" />
+
+    <!-- Segment 3: Amber/Gold (Right) -->
+    <path d="M 15,-65 L 45,-45 L 30,-20 L 15,-30 L 25,-45 L 0,-55 Z" fill="#D35400" transform="rotate(90)" />
+
+    <!-- Segment 4: Mustard/Sand (Bottom-Right) -->
+    <path d="M 15,-65 L 45,-45 L 30,-20 L 15,-30 L 25,-45 L 0,-55 Z" fill="#E67E22" transform="rotate(135)" />
+
+    <!-- Segment 5: Light Olive/Lime (Bottom) -->
+    <path d="M 15,-65 L 45,-45 L 30,-20 L 15,-30 L 25,-45 L 0,-55 Z" fill="#27AE60" transform="rotate(180)" />
+
+    <!-- Segment 6: Green/Forest (Bottom-Left) -->
+    <path d="M 15,-65 L 45,-45 L 30,-20 L 15,-30 L 25,-45 L 0,-55 Z" fill="#1E8449" transform="rotate(225)" />
+
+    <!-- Segment 7: Blue-Grey/Periwinkle (Left) -->
+    <path d="M 15,-65 L 45,-45 L 30,-20 L 15,-30 L 25,-45 L 0,-55 Z" fill="#7D3C98" transform="rotate(270)" />
+
+    <!-- Segment 8: Deep Purple (Top-Left corner) -->
+    <path d="M 15,-65 L 45,-45 L 30,-20 L 15,-30 L 25,-45 L 0,-55 Z" fill="#5B2C6F" transform="rotate(315)" />
+  </g>
+</svg>

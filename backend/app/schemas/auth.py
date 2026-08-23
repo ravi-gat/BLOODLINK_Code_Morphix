@@ -1,7 +1,9 @@
-"""Pydantic schemas for authentication endpoints."""
+"""
+Pydantic schemas for authentication endpoints.
+Google OAuth schemas have been removed — only email/password auth is supported.
+"""
 from pydantic import BaseModel, EmailStr, field_validator, model_validator
 from typing import Optional
-from ..models.enums import UserRole, BloodGroup
 import re
 
 
@@ -12,8 +14,12 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     phone: str
     city: str
-    role: str   # accepts lowercase frontend values: patient, donor, hospital, bloodbank
+    role: str   # accepts lowercase: patient, donor, hospital, bloodbank (admin forbidden)
     blood_group: Optional[str] = None
+    address: Optional[str] = None
+    hospital_name: Optional[str] = None
+    blood_bank_name: Optional[str] = None
+    registration_number: Optional[str] = None
     password: str
     confirm_password: Optional[str] = None
 
@@ -27,12 +33,18 @@ class RegisterRequest(BaseModel):
             raise ValueError("Name must be 100 characters or fewer.")
         return v
 
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return v.strip().lower()
+
     @field_validator("phone")
     @classmethod
     def validate_phone(cls, v: str) -> str:
-        if not re.match(r"^\+?[0-9\s\-]{10,15}$", v.strip()):
+        cleaned = v.strip()
+        if not re.match(r"^\+?[0-9\s\-]{10,15}$", cleaned):
             raise ValueError("Enter a valid phone number (10–15 digits).")
-        return v.strip()
+        return cleaned
 
     @field_validator("city")
     @classmethod
@@ -62,17 +74,33 @@ class RegisterRequest(BaseModel):
         return self
 
 
+# ── Login ─────────────────────────────────────────────────────────────────────
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
-    role: str   # lowercase frontend value
+    # role field accepted for backwards compatibility but not used —
+    # the backend determines role from the database.
+    role: Optional[str] = None
 
+
+# ── Token refresh ─────────────────────────────────────────────────────────────
 
 class RefreshRequest(BaseModel):
     refresh_token: str
 
 
+# ── Password management ───────────────────────────────────────────────────────
+
 class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+class ResendVerificationRequest(BaseModel):
     email: EmailStr
 
 
@@ -119,11 +147,11 @@ class UserResponse(BaseModel):
     name: str
     email: str
     phone: Optional[str] = None
-    role: str   # lowercase for frontend compatibility
+    role: str           # lowercase for frontend compatibility
     status: str
     is_verified: bool
     city: Optional[str] = None
-    blood_group: Optional[str] = None  # human-readable label e.g. "O+"
+    blood_group: Optional[str] = None   # human-readable e.g. "O+"
     created_at: str
 
     model_config = {"from_attributes": True}
@@ -131,8 +159,8 @@ class UserResponse(BaseModel):
 
 class AuthResponse(BaseModel):
     success: bool = True
-    user: UserResponse
-    access_token: str
+    user: Optional[UserResponse] = None
+    access_token: Optional[str] = None
     token_type: str = "bearer"
 
 
@@ -145,3 +173,13 @@ class TokenResponse(BaseModel):
 class MessageResponse(BaseModel):
     success: bool = True
     message: str
+
+
+class PublicStatsResponse(BaseModel):
+    success: bool = True
+    registered_donors: int = 0
+    registered_hospitals: int = 0
+    registered_bloodbanks: int = 0
+    completed_donations: int = 0
+    active_requests: int = 0
+    lives_saved: int = 0

@@ -30,8 +30,8 @@ from sqlalchemy import func
 from ..core.database import get_db
 from ..core.deps import get_hospital_user
 from ..models.user import User
-from ..models.profiles import Hospital, BloodBank
-from ..models.blood import BloodRequest, BloodInventory
+from ..models.profiles import Hospital, BloodBank, Donor
+from ..models.blood import BloodRequest, BloodInventory, Donation
 from ..models.enums import RequestStatus, BloodGroup
 from ..schemas.hospital import (
     HospitalProfileUpdate, HospitalProfileResponse,
@@ -39,6 +39,7 @@ from ..schemas.hospital import (
     RequestStatusUpdate, AppointmentResponse,
 )
 from ..schemas.patient import BloodRequestResponse
+from ..schemas.donor import DonationCreate, DonationResponse
 from ..utils.helpers import label_to_bg, bg_to_label, fmt_datetime, fmt_date
 from ..services.audit_service import log_action
 import logging
@@ -188,6 +189,9 @@ def add_hospital_inventory(
             detail="No blood bank found. A blood bank must exist before adding inventory.",
         )
 
+    if body.units_available < 0:
+        raise HTTPException(status_code=400, detail="Units available cannot be negative.")
+
     expiry: date | None = body.expiry_date  # already a date from schema
 
     item = BloodInventory(
@@ -222,6 +226,8 @@ def update_hospital_inventory(
         raise HTTPException(status_code=404, detail="Inventory item not found.")
 
     if body.units_available is not None:
+        if body.units_available < 0:
+            raise HTTPException(status_code=400, detail="Units available cannot be negative.")
         item.units_available = body.units_available
     if body.expiry_date is not None:
         item.expiry_date = body.expiry_date
@@ -276,6 +282,8 @@ def get_hospital_requests(
     return [_request_response(r) for r in rows]
 
 
+from ..core.state_machine import validate_request_transition
+
 @router.put("/hospitals/requests/{request_id}/approve")
 def approve_request(
     request_id: str,
@@ -288,6 +296,7 @@ def approve_request(
     if not blood_req:
         raise HTTPException(status_code=404, detail="Request not found.")
 
+    validate_request_transition(blood_req.status, RequestStatus.PROCESSING)
     blood_req.status = RequestStatus.PROCESSING   # valid DB enum value
     if body.notes:
         existing = blood_req.notes or ""
@@ -314,6 +323,7 @@ def reject_request(
     if not blood_req:
         raise HTTPException(status_code=404, detail="Request not found.")
 
+    validate_request_transition(blood_req.status, RequestStatus.REJECTED)
     blood_req.status = RequestStatus.REJECTED   # valid DB enum value
     log_action(
         db, "REJECT_REQUEST",
@@ -383,3 +393,99 @@ def get_hospital_analytics(
             ],
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# Donations
+# ---------------------------------------------------------------------------
+
+@router.get("/hospitals/donations", response_model=list[DonationResponse])
+def get_hospital_donations(
+    current_user: User = Depends(get_hospital_user),
+    db: Session = Depends(get_db),
+):
+    hospital = db.query(Hospital).filter(Hospital.user_id == current_user.id).first()
+    if not hospital:
+        raise HTTPException(status_code=404, detail="Hospital profile not found.")
+
+    donations = (
+        db.query(Donation)
+        .filter(Donation.hospital_id == hospital.id)
+        .order_by(Donation.donation_date.desc())
+        .all()
+    )
+    return [
+        DonationResponse(
+            id=d.id,
+            blood_group=bg_to_label(d.blood_group),
+            units=d.units,
+            component_type="Whole Blood",
+            donation_date=fmt_date(d.donation_date) or "",
+            status=d.status,
+            hospital_name=hospital.hospital_name,
+            blood_bank_name=None,
+            notes=None,
+            created_at=fmt_datetime(d.created_at) or "",
+        )
+        for d in donations
+    ]
+
+
+@router.post("/hospitals/donations", response_model=DonationResponse, status_code=201)
+def record_hospital_donation(
+    body: DonationCreate,
+    req: Request,
+    current_user: User = Depends(get_hospital_user),
+    db: Session = Depends(get_db),
+):
+    hospital = db.query(Hospital).filter(Hospital.user_id == current_user.id).first()
+    if not hospital:
+        raise HTTPException(status_code=404, detail="Hospital profile not found.")
+
+    donor = db.query(Donor).filter(Donor.id == body.donor_id).first()
+    if not donor:
+        raise HTTPException(status_code=404, detail="Donor not found.")
+
+    bg = label_to_bg(body.blood_group)
+    if not bg:
+        raise HTTPException(status_code=400, detail="Invalid blood group.")
+
+    donation = Donation(
+        id=str(uuid.uuid4()).replace("-", ""),
+        donor_id=donor.id,
+        hospital_id=hospital.id,
+        blood_bank_id=None,
+        blood_group=bg,
+        units=body.units,
+        status=body.status or "COMPLETED",
+    )
+    db.add(donation)
+    db.flush()
+
+    # Update donor last donation date
+    donor.last_donation_date = donation.donation_date
+
+    log_action(
+        db,
+        "RECORD_HOSPITAL_DONATION",
+        user_id=current_user.id,
+        entity="Donation",
+        entity_id=donation.id,
+        extra={"units": body.units, "donor_id": donor.id},
+        ip_address=req.client.host if req.client else None,
+    )
+    db.commit()
+    db.refresh(donation)
+
+    return DonationResponse(
+        id=donation.id,
+        blood_group=bg_to_label(donation.blood_group),
+        units=donation.units,
+        component_type="Whole Blood",
+        donation_date=fmt_date(donation.donation_date) or "",
+        status=donation.status,
+        hospital_name=hospital.hospital_name,
+        blood_bank_name=None,
+        notes=None,
+        created_at=fmt_datetime(donation.created_at) or "",
+    )

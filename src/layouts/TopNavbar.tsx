@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, Link } from "react-router";
 import {
   Bell, Sun, Moon, Menu, Search, ChevronDown, LogOut, User, Settings,
   Droplets, X, Check,
@@ -9,6 +9,8 @@ import { useThemeStore } from "../stores/useThemeStore";
 import { useNotificationStore } from "../stores/useNotificationStore";
 import { Avatar } from "../components/shared/Avatar";
 import { RoleBadge } from "../components/shared/StatusBadge";
+import { BloodLinkLogo } from "../components/shared/BloodLinkLogo";
+import { GlobalSearchModal } from "../components/shared/GlobalSearchModal";
 import type { UserRole } from "../types";
 import { formatDistanceToNow } from "../utils/date";
 
@@ -51,8 +53,21 @@ export function TopNavbar({ onMobileMenuToggle, pageTitle }: TopNavbarProps) {
 
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+
+  // Global keyboard shortcut Cmd+K / Ctrl+K
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Fetch notifications when user is authenticated
   useEffect(() => {
@@ -84,21 +99,45 @@ export function TopNavbar({ onMobileMenuToggle, pageTitle }: TopNavbarProps) {
 
   return (
     <header className="h-16 bg-card/90 backdrop-blur-md border-b border-border flex items-center justify-between px-4 sm:px-6 gap-4 sticky top-0 z-30">
-      {/* Left */}
+      {/* Left - Logo and Title */}
       <div className="flex items-center gap-3">
         <button
           onClick={onMobileMenuToggle}
           className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+          aria-label="Toggle mobile menu"
         >
           <Menu size={18} />
         </button>
+        <BloodLinkLogo size="sm" className="hidden sm:flex lg:hidden" />
+        <BloodLinkLogo size="xs" showText={false} className="sm:hidden" />
         {pageTitle && (
-          <h2 className="text-sm font-semibold text-foreground hidden sm:block">{pageTitle}</h2>
+          <h2 className="text-sm font-semibold text-foreground hidden md:block border-l border-border pl-3 ml-1">{pageTitle}</h2>
         )}
       </div>
 
       {/* Right */}
       <div className="flex items-center gap-2 ml-auto">
+        {/* Global search trigger */}
+        <button
+          onClick={() => setSearchOpen(true)}
+          className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 text-muted-foreground text-xs transition-all hover:border-red-500/30"
+          aria-label="Global Search"
+        >
+          <Search size={14} className="text-muted-foreground" />
+          <span>Search blood groups, facilities...</span>
+          <kbd className="ml-1.5 font-mono text-[10px] bg-card px-1.5 py-0.5 rounded border border-border text-muted-foreground">
+            ⌘K
+          </kbd>
+        </button>
+
+        <button
+          onClick={() => setSearchOpen(true)}
+          className="sm:hidden w-9 h-9 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+          aria-label="Search"
+        >
+          <Search size={16} />
+        </button>
+
         {/* Theme toggle */}
         <button
           onClick={toggleTheme}
@@ -254,6 +293,8 @@ export function TopNavbar({ onMobileMenuToggle, pageTitle }: TopNavbarProps) {
           )}
         </div>
       </div>
+
+      <GlobalSearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
     </header>
   );
 }

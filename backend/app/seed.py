@@ -1,448 +1,395 @@
 """
-BloodLink Database Seed Script.
+BloodLink Database Seed Script — DEVELOPMENT ONLY.
 
-Creates demo accounts and sample data for development/testing.
-Run with: python -m app.seed
+Creates demo accounts and sample data for local development and testing.
 
-DEMO ACCOUNTS (development only):
+IMPORTANT:
+  - This script must NEVER run automatically.
+  - It must NEVER be executed against a production database.
+  - All records are clearly identifiable as development/demo data.
+  - Existing records are detected and skipped (idempotent).
+  - Remove these accounts before production deployment.
+
+Usage:
+  cd backend
+  python -m app.seed
+
+Demo accounts created:
   patient@bloodlink.demo   / Patient@123
   donor@bloodlink.demo     / Donor@123
   hospital@bloodlink.demo  / Hospital@123
   bloodbank@bloodlink.demo / BloodBank@123
   admin@bloodlink.demo     / Admin@123
 
-These accounts are clearly identified as demo/development data.
-Remove or change credentials before deploying to production.
+Only uses columns that actually exist in the live PostgreSQL schema.
+Non-existent columns are intentionally omitted:
+  - Donor.next_eligible_date   (not in schema)
+  - Donor.health_status        (not in schema)
+  - Donor.total_donations      (not in schema)
+  - Donor.reward_points        (not in schema)
+  - Patient.emergency_contact  (not in schema)
+  - Hospital.phone             (not in schema)
+  - BloodBank.phone            (not in schema)
+  - BloodInventory.component_type  (not in schema)
+  - BloodInventory.hospital_id     (not in schema — belongs only to BloodBank)
 """
-import sys
+
 import os
+import sys
+import logging
+from datetime import datetime, date, timedelta, timezone
+from uuid import uuid4
+
+# Make sure parent directory is on path so `python -m app.seed` works
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from datetime import date, timedelta
 from app.core.database import SessionLocal
 from app.core.security import hash_password
 from app.models.user import User
 from app.models.profiles import Patient, Donor, Hospital, BloodBank
-from app.models.blood import BloodRequest, BloodInventory, Donation, Appointment
-from app.models.notifications import Notification, Reward, RewardTransaction
+from app.models.blood import BloodRequest, BloodInventory, Donation
+from app.models.notifications import Notification
 from app.models.enums import (
-    UserRole, UserStatus, BloodGroup, RequestStatus, UrgencyLevel,
-    VerificationStatus, NotificationType, ComponentType, DonationStatus
+    UserRole, UserStatus, BloodGroup, RequestStatus,
 )
-import logging
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(levelname)s — %(message)s")
 logger = logging.getLogger(__name__)
+
+# Guard — refuse to run against non-development database
+_ENV = os.environ.get("ENVIRONMENT", "development").lower()
+if _ENV == "production":
+    logger.critical("SEED SCRIPT REFUSED: ENVIRONMENT=production. Never seed a production database.")
+    sys.exit(1)
+
+_now = datetime.now(timezone.utc)
+
+
+def _uid() -> str:
+    return str(uuid4()).replace("-", "")
+
+
+def _skip_if_exists(db, email: str) -> bool:
+    return db.query(User).filter(User.email == email).first() is not None
 
 
 def seed():
+    logger.info("BloodLink seed script starting — DEVELOPMENT ONLY")
     db = SessionLocal()
     try:
-        _seed_users(db)
-        _seed_sample_donors(db)
-        _seed_inventory(db)
-        _seed_requests(db)
-        _seed_donations(db)
+        _seed_admin(db)
+        _seed_patient(db)
+        donor = _seed_donor(db)
+        hospital = _seed_hospital(db)
+        blood_bank = _seed_blood_bank(db)
+        _seed_extra_donors(db)
+        if blood_bank:
+            _seed_inventory(db, blood_bank)
+        if hospital:
+            patient = db.query(Patient).join(User, Patient.user_id == User.id).filter(
+                User.email == "patient@bloodlink.demo"
+            ).first()
+            if patient:
+                _seed_requests(db, patient, hospital)
+                if donor:
+                    _seed_donations(db, donor, hospital)
         _seed_notifications(db)
         db.commit()
-        logger.info("✓ BloodLink seed data created successfully.")
-        _print_demo_accounts()
-    except Exception as e:
+        logger.info("✓ Seed completed successfully.")
+        _print_accounts()
+    except Exception as exc:
         db.rollback()
-        logger.error(f"Seed failed: {e}", exc_info=True)
+        logger.error(f"Seed failed — rolled back: {exc}", exc_info=True)
         raise
     finally:
         db.close()
 
 
-def _upsert_user(db, email, full_name, phone, role, password, city, blood_group=None) -> User:
-    """Create or update a demo user."""
-    existing = db.query(User).filter(User.email == email).first()
-    if existing:
-        existing.full_name = full_name
-        existing.phone = phone
-        existing.password_hash = hash_password(password)
-        existing.status = UserStatus.ACTIVE
-        existing.is_verified = True
-        db.flush()
-        return existing
+# ── Individual seeders ────────────────────────────────────────────────────────
 
-    user = User(
-        full_name=full_name,
-        email=email,
-        phone=phone,
-        password_hash=hash_password(password),
-        role=role,
-        status=UserStatus.ACTIVE,
-        is_verified=True,
+def _seed_admin(db) -> User | None:
+    email = "admin@bloodlink.demo"
+    if _skip_if_exists(db, email):
+        logger.info(f"  Skipping {email} (already exists)")
+        return None
+    u = User(
+        id=_uid(), full_name="BloodLink Platform Admin", email=email,
+        phone="+91 80000 10001", password_hash=hash_password("Admin@123"),
+        role=UserRole.ADMIN, status=UserStatus.ACTIVE,
     )
-    db.add(user)
+    db.add(u)
     db.flush()
-    return user
+    logger.info(f"  Created admin: {email}")
+    return u
 
 
-def _seed_users(db):
-    logger.info("Creating demo user accounts...")
-
-    # ── Admin ─────────────────────────────────────────────────────────────────
-    admin = _upsert_user(
-        db, "admin@bloodlink.demo",
-        "BloodLink Platform Admin", "+91 80000 10001",
-        UserRole.ADMIN, "Admin@123", "Bengaluru"
+def _seed_patient(db) -> Patient | None:
+    email = "patient@bloodlink.demo"
+    if _skip_if_exists(db, email):
+        logger.info(f"  Skipping {email} (already exists)")
+        return None
+    u = User(
+        id=_uid(), full_name="Ananya Iyer", email=email,
+        phone="+91 98765 10482", password_hash=hash_password("Patient@123"),
+        role=UserRole.PATIENT, status=UserStatus.ACTIVE,
     )
-
-    # ── Patient ───────────────────────────────────────────────────────────────
-    patient_user = _upsert_user(
-        db, "patient@bloodlink.demo",
-        "Ananya Iyer", "+91 98765 10482",
-        UserRole.PATIENT, "Patient@123", "Bengaluru", BloodGroup.O_POS
+    db.add(u)
+    db.flush()
+    p = Patient(
+        id=_uid(), user_id=u.id,
+        blood_group=BloodGroup.O_POS,
+        city="Bengaluru",
+        address="12 MG Road, Bengaluru 560001",
     )
-    patient = db.query(Patient).filter(Patient.user_id == patient_user.id).first()
-    if not patient:
-        patient = Patient(
-            user_id=patient_user.id,
-            blood_group=BloodGroup.O_POS,
-            city="Bengaluru",
-            emergency_contact="+91 98765 10483",
-        )
-        db.add(patient)
-        db.flush()
+    db.add(p)
+    db.flush()
+    logger.info(f"  Created patient: {email}")
+    return p
 
-    # ── Donor ─────────────────────────────────────────────────────────────────
-    donor_user = _upsert_user(
-        db, "donor@bloodlink.demo",
-        "Karthik Raman", "+91 99807 21645",
-        UserRole.DONOR, "Donor@123", "Mysuru", BloodGroup.O_POS
+
+def _seed_donor(db) -> Donor | None:
+    email = "donor@bloodlink.demo"
+    if _skip_if_exists(db, email):
+        logger.info(f"  Skipping {email} (already exists)")
+        return None
+    u = User(
+        id=_uid(), full_name="Karthik Raman", email=email,
+        phone="+91 99807 21645", password_hash=hash_password("Donor@123"),
+        role=UserRole.DONOR, status=UserStatus.ACTIVE,
     )
-    donor = db.query(Donor).filter(Donor.user_id == donor_user.id).first()
-    if not donor:
-        donor = Donor(
-            user_id=donor_user.id,
-            blood_group=BloodGroup.O_POS,
-            city="Mysuru",
-            availability=True,
-            last_donation_date=date.today() - timedelta(days=90),
-            next_eligible_date=date.today() - timedelta(days=34),
-            health_status="Good",
-            verification_status=VerificationStatus.VERIFIED,
-            total_donations=8,
-            reward_points=820,
-        )
-        db.add(donor)
-        db.flush()
-        reward = Reward(donor_id=donor.id, points=820, level="Silver")
-        db.add(reward)
-        db.flush()
-        # Sample reward transactions
-        for pts, reason in [(100, "First donation bonus"), (200, "3rd donation milestone"),
-                             (150, "Emergency response"), (200, "5th donation milestone"),
-                             (170, "Regular donation")]:
-            db.add(RewardTransaction(reward_id=reward.id, type="earned", points=pts,
-                                     reason=reason, balance_after=sum([100,200,150,200,170][:idx+1]))
-                   for idx, (pts, reason) in enumerate([(100,"First donation bonus"),(200,"3rd donation milestone"),
-                                                         (150,"Emergency response"),(200,"5th donation milestone"),
-                                                         (170,"Regular donation")])).__next__() if False else None
-        # Simple approach
-        running = 0
-        for pts, reason in [(100, "First donation bonus"), (200, "3rd donation milestone"),
-                             (150, "Emergency response"), (200, "5th donation milestone"),
-                             (170, "Regular donation")]:
-            running += pts
-            db.add(RewardTransaction(reward_id=reward.id, type="earned", points=pts,
-                                     reason=reason, balance_after=running))
-
-    # ── Hospital ──────────────────────────────────────────────────────────────
-    hospital_user = _upsert_user(
-        db, "hospital@bloodlink.demo",
-        "Sanjay Memorial Hospital", "+91 80416 72390",
-        UserRole.HOSPITAL, "Hospital@123", "Bengaluru"
+    db.add(u)
+    db.flush()
+    # Only columns that exist: userId, bloodGroup, city, address,
+    # availabilityStatus, lastDonationDate, createdAt, updatedAt
+    d = Donor(
+        id=_uid(), user_id=u.id,
+        blood_group=BloodGroup.O_POS,
+        city="Mysuru",
+        address="45 Chamundi Hills Road, Mysuru 570001",
+        availability_status=True,
+        last_donation_date=date.today() - timedelta(days=90),
     )
-    hospital = db.query(Hospital).filter(Hospital.user_id == hospital_user.id).first()
-    if not hospital:
-        hospital = Hospital(
-            user_id=hospital_user.id,
-            hospital_name="Sanjay Memorial Hospital",
-            registration_number="KAR-HSP-20481",
-            city="Bengaluru",
-            address="14 MG Road, Bengaluru 560001",
-            phone="+91 80416 72390",
-            verification_status=VerificationStatus.VERIFIED,
-        )
-        db.add(hospital)
-        db.flush()
+    db.add(d)
+    db.flush()
+    logger.info(f"  Created donor: {email}")
+    return d
 
-    # ── Blood Bank ────────────────────────────────────────────────────────────
-    bb_user = _upsert_user(
-        db, "bloodbank@bloodlink.demo",
-        "Sahyadri Blood Centre", "+91 80882 61437",
-        UserRole.BLOOD_BANK, "BloodBank@123", "Mangaluru"
+
+def _seed_hospital(db) -> Hospital | None:
+    email = "hospital@bloodlink.demo"
+    if _skip_if_exists(db, email):
+        logger.info(f"  Skipping {email} (already exists)")
+        return None
+    u = User(
+        id=_uid(), full_name="Sanjay Memorial Hospital", email=email,
+        phone="+91 80416 72390", password_hash=hash_password("Hospital@123"),
+        role=UserRole.HOSPITAL, status=UserStatus.ACTIVE,
     )
-    blood_bank = db.query(BloodBank).filter(BloodBank.user_id == bb_user.id).first()
-    if not blood_bank:
-        blood_bank = BloodBank(
-            user_id=bb_user.id,
-            bank_name="Sahyadri Blood Centre",
-            registration_number="KAR-BB-11042",
-            city="Mangaluru",
-            address="7 Lighthouse Hill Rd, Mangaluru 575001",
-            phone="+91 80882 61437",
-            verification_status=VerificationStatus.VERIFIED,
-        )
-        db.add(blood_bank)
-        db.flush()
+    db.add(u)
+    db.flush()
+    # Only columns that exist: userId, hospitalName, registrationNumber,
+    # city, address, latitude, longitude, createdAt, updatedAt
+    h = Hospital(
+        id=_uid(), user_id=u.id,
+        hospital_name="Sanjay Memorial Hospital",
+        registration_number="KAR-HSP-20481",
+        city="Bengaluru",
+        address="14 MG Road, Bengaluru 560001",
+        latitude=12.9716,
+        longitude=77.5946,
+    )
+    db.add(h)
+    db.flush()
+    logger.info(f"  Created hospital: {email}")
+    return h
 
-    logger.info("✓ Demo accounts created.")
+
+def _seed_blood_bank(db) -> BloodBank | None:
+    email = "bloodbank@bloodlink.demo"
+    if _skip_if_exists(db, email):
+        logger.info(f"  Skipping {email} (already exists)")
+        return None
+    u = User(
+        id=_uid(), full_name="Sahyadri Blood Centre", email=email,
+        phone="+91 80882 61437", password_hash=hash_password("BloodBank@123"),
+        role=UserRole.BLOOD_BANK, status=UserStatus.ACTIVE,
+    )
+    db.add(u)
+    db.flush()
+    # Only columns that exist: userId, name, registrationNumber,
+    # city, address, latitude, longitude, createdAt, updatedAt
+    b = BloodBank(
+        id=_uid(), user_id=u.id,
+        name="Sahyadri Blood Centre",
+        registration_number="KAR-BB-11042",
+        city="Mangaluru",
+        address="7 Lighthouse Hill Rd, Mangaluru 575001",
+        latitude=12.9141,
+        longitude=74.8560,
+    )
+    db.add(b)
+    db.flush()
+    logger.info(f"  Created blood bank: {email}")
+    return b
 
 
-def _seed_sample_donors(db):
-    """Create additional sample donors with varied blood groups."""
-    logger.info("Creating sample donors...")
-    sample_donors = [
-        ("Meera Kulkarni", "meera.kulkarni@demo.bloodlink", "+91 90001 00001", "Bengaluru", BloodGroup.A_POS, 5),
-        ("Farhan Siddiqui", "farhan.siddiqui@demo.bloodlink", "+91 90001 00002", "Mysuru", BloodGroup.B_NEG, 3),
-        ("Nandini Rao", "nandini.rao@demo.bloodlink", "+91 90001 00003", "Mangaluru", BloodGroup.AB_POS, 7),
-        ("Vikram Shetty", "vikram.shetty@demo.bloodlink", "+91 90001 00004", "Bengaluru", BloodGroup.O_NEG, 12),
-        ("Divya Krishnamurthy", "divya.k@demo.bloodlink", "+91 90001 00005", "Chennai", BloodGroup.A_NEG, 4),
-        ("Rahul Nair", "rahul.nair@demo.bloodlink", "+91 90001 00006", "Hyderabad", BloodGroup.B_POS, 9),
-        ("Priya Menon", "priya.menon@demo.bloodlink", "+91 90001 00007", "Pune", BloodGroup.O_POS, 6),
-        ("Arun Subramaniam", "arun.s@demo.bloodlink", "+91 90001 00008", "Mumbai", BloodGroup.AB_NEG, 2),
+def _seed_extra_donors(db):
+    """Create 4 additional donors with different blood groups for richer search results."""
+    extras = [
+        ("Meera Kulkarni", "meera@demo.bloodlink", "+91 90001 00001", "Bengaluru", BloodGroup.A_POS, 60),
+        ("Vikram Shetty",  "vikram@demo.bloodlink", "+91 90001 00002", "Bengaluru", BloodGroup.O_NEG, 90),
+        ("Nandini Rao",    "nandini@demo.bloodlink", "+91 90001 00003", "Mysuru",    BloodGroup.B_POS, 120),
+        ("Rahul Nair",     "rahul@demo.bloodlink",   "+91 90001 00004", "Mangaluru", BloodGroup.AB_POS, 75),
     ]
-
-    for name, email, phone, city, bg, donations in sample_donors:
-        existing = db.query(User).filter(User.email == email).first()
-        if existing:
+    for name, email, phone, city, bg, days_since_donation in extras:
+        if _skip_if_exists(db, email):
             continue
-
-        user = User(
-            full_name=name,
-            email=email,
-            phone=phone,
+        u = User(
+            id=_uid(), full_name=name, email=email, phone=phone,
             password_hash=hash_password("Donor@123"),
-            role=UserRole.DONOR,
-            status=UserStatus.ACTIVE,
-            is_verified=True,
+            role=UserRole.DONOR, status=UserStatus.ACTIVE,
         )
-        db.add(user)
+        db.add(u)
         db.flush()
-
-        last_donation = date.today() - timedelta(days=60 + donations * 5)
-        d = Donor(
-            user_id=user.id,
-            blood_group=bg,
-            city=city,
-            availability=True,
-            last_donation_date=last_donation,
-            next_eligible_date=last_donation + timedelta(days=56),
-            health_status="Good",
-            verification_status=VerificationStatus.VERIFIED,
-            total_donations=donations,
-            reward_points=donations * 100,
-        )
-        db.add(d)
-        db.flush()
-        db.add(Reward(donor_id=d.id, points=d.reward_points, level="Bronze"))
-
-    db.flush()
-    logger.info("✓ Sample donors created.")
-
-
-def _seed_inventory(db):
-    """Create sample blood inventory for the demo blood bank and hospital."""
-    logger.info("Creating sample inventory...")
-
-    # Blood bank inventory
-    blood_bank = db.query(BloodBank).filter(
-        BloodBank.registration_number == "KAR-BB-11042"
-    ).first()
-
-    if blood_bank:
-        existing_count = db.query(BloodInventory).filter(
-            BloodInventory.blood_bank_id == blood_bank.id
-        ).count()
-        if existing_count == 0:
-            inventory_data = [
-                (BloodGroup.O_POS, 36, 45),
-                (BloodGroup.O_NEG, 7, 30),
-                (BloodGroup.A_POS, 22, 60),
-                (BloodGroup.A_NEG, 5, 45),
-                (BloodGroup.B_POS, 18, 50),
-                (BloodGroup.B_NEG, 4, 30),
-                (BloodGroup.AB_POS, 12, 55),
-                (BloodGroup.AB_NEG, 3, 35),
-            ]
-            for bg, units, days_to_expiry in inventory_data:
-                db.add(BloodInventory(
-                    blood_bank_id=blood_bank.id,
-                    blood_group=bg,
-                    component_type=ComponentType.WHOLE_BLOOD,
-                    units_available=units,
-                    expiry_date=date.today() + timedelta(days=days_to_expiry),
-                ))
-
-    # Hospital inventory
-    hospital = db.query(Hospital).filter(
-        Hospital.registration_number == "KAR-HSP-20481"
-    ).first()
-    if hospital:
-        existing_count = db.query(BloodInventory).filter(
-            BloodInventory.hospital_id == hospital.id
-        ).count()
-        if existing_count == 0:
-            h_inventory = [
-                (BloodGroup.O_POS, 8, 20),
-                (BloodGroup.A_POS, 6, 25),
-                (BloodGroup.B_POS, 4, 20),
-                (BloodGroup.AB_POS, 2, 30),
-                (BloodGroup.O_NEG, 2, 15),
-            ]
-            for bg, units, days_to_expiry in h_inventory:
-                db.add(BloodInventory(
-                    hospital_id=hospital.id,
-                    blood_group=bg,
-                    component_type=ComponentType.WHOLE_BLOOD,
-                    units_available=units,
-                    expiry_date=date.today() + timedelta(days=days_to_expiry),
-                ))
-
-    db.flush()
-    logger.info("✓ Sample inventory created.")
-
-
-def _seed_requests(db):
-    """Create sample blood requests."""
-    logger.info("Creating sample blood requests...")
-
-    patient = db.query(Patient).join(User, Patient.user_id == User.id).filter(
-        User.email == "patient@bloodlink.demo"
-    ).first()
-
-    if not patient:
-        return
-
-    existing = db.query(BloodRequest).filter(BloodRequest.patient_id == patient.id).count()
-    if existing > 0:
-        logger.info("  Requests already exist, skipping.")
-        return
-
-    requests_data = [
-        (BloodGroup.O_POS, 2, UrgencyLevel.CRITICAL, "Bengaluru", "Emergency Surgery", RequestStatus.COMPLETED),
-        (BloodGroup.O_POS, 1, UrgencyLevel.HIGH, "Bengaluru", "Post-operative care", RequestStatus.COMPLETED),
-        (BloodGroup.O_POS, 3, UrgencyLevel.MODERATE, "Mysuru", "Scheduled procedure", RequestStatus.CANCELLED),
-        (BloodGroup.O_POS, 1, UrgencyLevel.HIGH, "Bengaluru", "Accident victim", RequestStatus.PENDING),
-    ]
-
-    for bg, units, urgency, city, notes, status in requests_data:
-        db.add(BloodRequest(
-            patient_id=patient.id,
-            blood_group=bg,
-            units_required=units,
-            urgency=urgency,
-            city=city,
-            status=status,
-            medical_notes=notes,
-            contact_number="+91 98765 10482",
-            patient_name=patient.user.full_name if patient.user else "Ananya Iyer",
+        db.add(Donor(
+            id=_uid(), user_id=u.id, blood_group=bg,
+            city=city, availability_status=True,
+            last_donation_date=date.today() - timedelta(days=days_since_donation),
         ))
-
+        logger.info(f"  Created extra donor: {email}")
     db.flush()
-    logger.info("✓ Sample blood requests created.")
 
 
-def _seed_donations(db):
-    """Create sample donation records for the demo donor."""
-    logger.info("Creating sample donations...")
-
-    donor = db.query(Donor).join(User, Donor.user_id == User.id).filter(
-        User.email == "donor@bloodlink.demo"
-    ).first()
-
-    if not donor:
+def _seed_inventory(db, blood_bank: BloodBank):
+    """Seed blood inventory for the demo blood bank."""
+    existing = db.query(BloodInventory).filter(
+        BloodInventory.blood_bank_id == blood_bank.id
+    ).count()
+    if existing > 0:
+        logger.info(f"  Inventory for {blood_bank.name} already exists, skipping.")
         return
 
+    # (blood_group, units_available, days_to_expiry)
+    # Only columns that exist: id, bloodBankId, bloodGroup,
+    # unitsAvailable, unitsReserved, expiryDate, updatedAt
+    items = [
+        (BloodGroup.O_POS,  36, 45),
+        (BloodGroup.O_NEG,   7, 30),
+        (BloodGroup.A_POS,  22, 60),
+        (BloodGroup.A_NEG,   5, 45),
+        (BloodGroup.B_POS,  18, 50),
+        (BloodGroup.B_NEG,   4, 30),
+        (BloodGroup.AB_POS, 12, 55),
+        (BloodGroup.AB_NEG,  3, 35),
+    ]
+    for bg, units, days in items:
+        expiry = datetime.now(timezone.utc) + timedelta(days=days)
+        db.add(BloodInventory(
+            id=_uid(), blood_bank_id=blood_bank.id,
+            blood_group=bg, units_available=units, units_reserved=0,
+            expiry_date=expiry,
+        ))
+    db.flush()
+    logger.info(f"  Seeded inventory for {blood_bank.name}")
+
+
+def _seed_requests(db, patient: Patient, hospital: Hospital):
+    """Seed sample blood requests for the demo patient."""
+    existing = db.query(BloodRequest).filter(
+        BloodRequest.patient_id == patient.id
+    ).count()
+    if existing > 0:
+        logger.info("  Blood requests already exist, skipping.")
+        return
+
+    # (blood_group, units, urgency_str, city, notes, status)
+    # Only columns that exist: id, patientId, hospitalId, bloodGroup,
+    # unitsRequired, urgency, status, city, notes, createdAt, updatedAt
+    rows = [
+        (BloodGroup.O_POS, 2, "Critical", "Bengaluru", "Emergency surgery", RequestStatus.FULFILLED),
+        (BloodGroup.O_POS, 1, "High",     "Bengaluru", "Post-operative care", RequestStatus.FULFILLED),
+        (BloodGroup.O_POS, 3, "Moderate", "Mysuru",    "Scheduled procedure", RequestStatus.CANCELLED),
+        (BloodGroup.O_POS, 1, "High",     "Bengaluru", "Accident victim", RequestStatus.PENDING),
+    ]
+    for bg, units, urgency, city, notes, status in rows:
+        db.add(BloodRequest(
+            id=_uid(), patient_id=patient.id, hospital_id=hospital.id,
+            blood_group=bg, units_required=units, urgency=urgency,
+            status=status, city=city, notes=notes,
+        ))
+    db.flush()
+    logger.info("  Seeded sample blood requests.")
+
+
+def _seed_donations(db, donor: Donor, hospital: Hospital):
+    """Seed sample donation records for the demo donor."""
     existing = db.query(Donation).filter(Donation.donor_id == donor.id).count()
     if existing > 0:
         logger.info("  Donations already exist, skipping.")
         return
 
-    hospital = db.query(Hospital).filter(
-        Hospital.registration_number == "KAR-HSP-20481"
-    ).first()
-
-    donations_data = [
-        (date.today() - timedelta(days=90), BloodGroup.O_POS, 1, DonationStatus.COMPLETED),
-        (date.today() - timedelta(days=180), BloodGroup.O_POS, 1, DonationStatus.COMPLETED),
-        (date.today() - timedelta(days=270), BloodGroup.O_POS, 1, DonationStatus.COMPLETED),
-        (date.today() - timedelta(days=360), BloodGroup.O_POS, 1, DonationStatus.COMPLETED),
-    ]
-
-    for don_date, bg, units, status in donations_data:
+    # Only columns that exist: id, donorId, bloodBankId, hospitalId,
+    # bloodGroup, units, donationDate, status, createdAt
+    for i, days_ago in enumerate([90, 180, 270, 360]):
         db.add(Donation(
-            donor_id=donor.id,
-            hospital_id=hospital.id if hospital else None,
-            blood_group=bg,
-            units=units,
-            component_type=ComponentType.WHOLE_BLOOD,
-            donation_date=don_date,
-            status=status,
+            id=_uid(), donor_id=donor.id, hospital_id=hospital.id,
+            blood_group=BloodGroup.O_POS, units=1,
+            donation_date=date.today() - timedelta(days=days_ago),
+            status="COMPLETED",
         ))
-
     db.flush()
-    logger.info("✓ Sample donations created.")
+    logger.info("  Seeded sample donations.")
 
 
 def _seed_notifications(db):
-    """Create sample notifications for demo users."""
-    logger.info("Creating sample notifications...")
-
-    users = {
-        u.email: u
-        for u in db.query(User).filter(User.email.in_([
-            "patient@bloodlink.demo", "donor@bloodlink.demo",
-            "hospital@bloodlink.demo", "bloodbank@bloodlink.demo", "admin@bloodlink.demo"
-        ])).all()
-    }
-
-    notifs = [
-        ("patient@bloodlink.demo", "Welcome to BloodLink", "Your patient account has been set up. You can now request blood donations.", NotificationType.INFO),
-        ("patient@bloodlink.demo", "Request Fulfilled", "Your blood request has been fulfilled. Thank you for using BloodLink.", NotificationType.MATCH),
-        ("donor@bloodlink.demo", "Welcome to BloodLink", "Thank you for registering as a donor. Your contribution saves lives.", NotificationType.INFO),
-        ("donor@bloodlink.demo", "Eligible to Donate", "You are now eligible to donate blood again. Check for nearby requests.", NotificationType.REMINDER),
-        ("donor@bloodlink.demo", "Points Earned", "You earned 100 reward points for your last donation.", NotificationType.REWARD),
-        ("hospital@bloodlink.demo", "Account Verified", "Your hospital account has been verified by the BloodLink team.", NotificationType.APPROVAL),
-        ("bloodbank@bloodlink.demo", "Account Verified", "Your blood bank account has been verified by the BloodLink team.", NotificationType.APPROVAL),
-        ("admin@bloodlink.demo", "New Hospital Registration", "Sanjay Memorial Hospital has submitted a registration request.", NotificationType.SYSTEM),
+    """Seed welcome notifications for demo users."""
+    user_emails_messages = [
+        ("patient@bloodlink.demo", "Welcome to BloodLink",
+         "Your patient account is active. You can now search for donors and request blood.", "info"),
+        ("donor@bloodlink.demo",   "Welcome to BloodLink",
+         "Thank you for registering as a donor. Your contributions save lives.", "info"),
+        ("hospital@bloodlink.demo","Account Active",
+         "Your hospital account is active. Manage blood requests from your dashboard.", "info"),
+        ("bloodbank@bloodlink.demo","Account Active",
+         "Your blood bank account is active. Manage inventory from your dashboard.", "info"),
     ]
-
-    existing_count = db.query(Notification).count()
-    if existing_count > 0:
-        logger.info("  Notifications already exist, skipping.")
-        return
-
-    for email, title, message, ntype in notifs:
-        user = users.get(email)
-        if user:
-            db.add(Notification(user_id=user.id, title=title, message=message, type=ntype))
-
+    for email, title, message, ntype in user_emails_messages:
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            continue
+        existing = db.query(Notification).filter(
+            Notification.user_id == user.id,
+            Notification.title == title,
+        ).first()
+        if existing:
+            continue
+        # Only columns that exist: id, userId, title, message, type, isRead, createdAt
+        db.add(Notification(
+            id=_uid(), user_id=user.id, title=title,
+            message=message, type=ntype, is_read=False,
+        ))
     db.flush()
-    logger.info("✓ Sample notifications created.")
+    logger.info("  Seeded welcome notifications.")
 
 
-def _print_demo_accounts():
-    print("\n" + "=" * 60)
-    print("  BloodLink Demo Accounts (DEVELOPMENT ONLY)")
-    print("=" * 60)
-    accounts = [
+# ── Display ───────────────────────────────────────────────────────────────────
+
+def _print_accounts():
+    print("\n" + "═" * 62)
+    print("  BloodLink Demo Accounts  —  DEVELOPMENT ONLY")
+    print("═" * 62)
+    rows = [
         ("Patient",    "patient@bloodlink.demo",    "Patient@123"),
         ("Donor",      "donor@bloodlink.demo",      "Donor@123"),
         ("Hospital",   "hospital@bloodlink.demo",   "Hospital@123"),
         ("Blood Bank", "bloodbank@bloodlink.demo",  "BloodBank@123"),
         ("Admin",      "admin@bloodlink.demo",      "Admin@123"),
     ]
-    for role, email, pwd in accounts:
-        print(f"  {role:<12} {email:<35} {pwd}")
-    print("=" * 60)
+    for role, email, pwd in rows:
+        print(f"  {role:<12}  {email:<36}  {pwd}")
+    print("═" * 62)
     print("  Remove these accounts before production deployment.")
-    print("=" * 60 + "\n")
+    print("═" * 62 + "\n")
 
 
 if __name__ == "__main__":

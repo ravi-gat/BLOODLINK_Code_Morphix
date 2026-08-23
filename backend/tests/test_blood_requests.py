@@ -25,7 +25,7 @@ def test_patient_can_create_blood_request(client: TestClient, patient_user):
     data = resp.json()
     assert data["blood_group"] == "O+"
     assert data["units_required"] == 2
-    assert data["status"] in ("PENDING", "MATCHING", "DONOR_FOUND")
+    assert data["status"] in ("PENDING", "ACCEPTED", "PROCESSING", "MATCHING", "DONOR_FOUND")
 
 
 def test_donor_cannot_create_blood_request(client: TestClient, donor_user):

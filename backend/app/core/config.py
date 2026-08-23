@@ -38,6 +38,25 @@ class Settings(BaseSettings):
     RATE_LIMIT_AUTH: str = "10/minute"
     RATE_LIMIT_DEFAULT: str = "60/minute"
 
+    # ── Google Maps ───────────────────────────────────────────────
+    # Required for geocoding, directions, distance matrix, and Places autocomplete.
+    # Enable these APIs in Google Cloud Console:
+    #   Maps JavaScript API, Geocoding API, Places API, Routes API
+    GOOGLE_MAPS_API_KEY: Optional[str] = None
+
+    FRONTEND_URL: str = "http://localhost:5173"
+
+    # ── SMTP / Email ──────────────────────────────────────────────
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    SMTP_FROM_EMAIL: Optional[str] = None
+    SMTP_FROM_NAME: str = "BloodLink Healthcare Network"
+
+    # ── Email Verification ────────────────────────────────────────
+    REQUIRE_EMAIL_VERIFICATION: bool = False
+
     # ── Environment ───────────────────────────────────────────────
     ENVIRONMENT: str = "development"
 

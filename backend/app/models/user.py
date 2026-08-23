@@ -6,14 +6,10 @@ Mapped to the existing Prisma PostgreSQL "User" table.
 
 from sqlalchemy import Column, String, DateTime, Enum
 from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
+from sqlalchemy.sql import func
 
 from ..core.database import Base
 from .enums import UserRole, UserStatus
-
-
-def _now():
-    return datetime.now(timezone.utc)
 
 
 class User(Base):
@@ -98,16 +94,16 @@ class User(Base):
 
     created_at = Column(
         "createdAt",
-        DateTime(timezone=True),
-        default=_now,
+        DateTime(),
+        default=func.now(),
         nullable=False,
     )
 
     updated_at = Column(
         "updatedAt",
-        DateTime(timezone=True),
-        default=_now,
-        onupdate=_now,
+        DateTime(),
+        default=func.now(),
+        onupdate=func.now(),
         nullable=False,
     )
 

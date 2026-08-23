@@ -79,3 +79,62 @@ def decode_refresh_token(token: str) -> Optional[Dict[str, Any]]:
         return payload
     except JWTError:
         return None
+
+
+def create_verification_token(user_id: str, email: str) -> str:
+    """
+    Create a JWT token for email verification (valid for 24 hours).
+    """
+    expire = datetime.now(timezone.utc) + timedelta(hours=24)
+    payload = {
+        "sub": user_id,
+        "email": email.lower().strip(),
+        "type": "verify_email",
+        "exp": expire,
+    }
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
+def decode_verification_token(token: str) -> Optional[Dict[str, Any]]:
+    """
+    Decode and validate an email verification JWT token.
+    """
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        if payload.get("type") != "verify_email":
+            return None
+        return payload
+    except JWTError:
+        return None
+
+
+def create_password_reset_token(user_id: str, email: str) -> str:
+    """
+    Create a short-lived JWT token for password reset (valid for 30 minutes).
+    """
+    expire = datetime.now(timezone.utc) + timedelta(minutes=30)
+    payload = {
+        "sub": user_id,
+        "email": email.lower().strip(),
+        "type": "reset_password",
+        "exp": expire,
+    }
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
+def decode_password_reset_token(token: str) -> Optional[Dict[str, Any]]:
+    """
+    Decode and validate a password reset JWT token.
+    """
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        if payload.get("type") != "reset_password":
+            return None
+        return payload
+    except JWTError:
+        return None
+
+
+# Google OAuth token functions removed.
+# Only email/password authentication is supported.
+

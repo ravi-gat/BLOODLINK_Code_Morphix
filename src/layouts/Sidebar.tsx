@@ -9,6 +9,7 @@ import type { UserRole } from "../types";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useNotificationStore } from "../stores/useNotificationStore";
 import { Avatar } from "../components/shared/Avatar";
+import { BloodLinkLogo } from "../components/shared/BloodLinkLogo";
 import { useState } from "react";
 
 interface SidebarProps {
@@ -99,16 +100,12 @@ export function Sidebar({ role, mobileOpen, onMobileClose }: SidebarProps) {
   const sidebarContent = (
     <div className={`flex flex-col h-full bg-card border-r border-border transition-all duration-300 ${collapsed ? "w-16" : "w-64"}`}>
       {/* Logo */}
-      <div className={`h-16 flex items-center border-b border-border flex-shrink-0 ${collapsed ? "justify-center px-0" : "px-5 gap-3"}`}>
-        <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center flex-shrink-0">
-          <Droplets size={16} className="text-white" />
-        </div>
-        {!collapsed && (
-          <div className="min-w-0">
-            <div className="font-bold text-foreground text-sm leading-tight">BloodLink</div>
-            <div className="text-xs text-muted-foreground truncate">{ROLE_LABELS[role]}</div>
-          </div>
-        )}
+      <div className={`h-16 flex items-center border-b border-border flex-shrink-0 ${collapsed ? "justify-center px-0" : "px-5"}`}>
+        <BloodLinkLogo
+          size={collapsed ? "sm" : "md"}
+          showText={!collapsed}
+          tagline={ROLE_LABELS[role]}
+        />
       </div>
 
       {/* Nav */}

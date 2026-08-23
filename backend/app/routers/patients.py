@@ -238,11 +238,8 @@ def cancel_blood_request(
     if not patient or req.patient_id != patient.id:
         raise HTTPException(status_code=403, detail="You can only cancel your own requests.")
 
-    # DB RequestStatus: PENDING ACCEPTED PROCESSING FULFILLED REJECTED CANCELLED
-    if req.status == RequestStatus.CANCELLED:
-        raise HTTPException(status_code=400, detail="Request is already cancelled.")
-    if req.status == RequestStatus.FULFILLED:
-        raise HTTPException(status_code=400, detail="A fulfilled request cannot be cancelled.")
+    from ..core.state_machine import validate_request_transition
+    validate_request_transition(req.status, RequestStatus.CANCELLED)
 
     req.status = RequestStatus.CANCELLED
     log_action(

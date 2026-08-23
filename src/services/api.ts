@@ -53,7 +53,9 @@ export async function api<T>(
   }
 
   if (!response.ok) {
+    const detailMsg = typeof body.detail === "string" ? body.detail : Array.isArray(body.detail) ? body.detail.map((e: any) => e.msg || e.message).join(", ") : undefined;
     const message =
+      detailMsg ||
       (body.message as string) ||
       HTTP_ERROR_MESSAGES[response.status] ||
       "Unable to complete the request.";
@@ -69,7 +71,7 @@ const HTTP_ERROR_MESSAGES: Record<number, string> = {
   401: "Your session has expired. Please sign in again.",
   403: "You do not have permission to perform this action.",
   404: "The requested resource was not found.",
-  409: "A conflict occurred — this record may already exist.",
+  409: "An account with this email already exists.",
   422: "Please check the submitted information.",
   429: "Too many requests. Please slow down.",
   500: "A server error occurred. Please try again.",
@@ -79,7 +81,7 @@ const HTTP_ERROR_MESSAGES: Record<number, string> = {
 // ── Typed API modules ─────────────────────────────────────────────────────────
 
 export const authApi = {
-  login: (email: string, password: string, role: string) =>
+  login: (email: string, password: string, role?: string) =>
     api<ApiAuthResponse>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password, role }),
@@ -89,6 +91,15 @@ export const authApi = {
     api<ApiAuthResponse>("/auth/register", {
       method: "POST",
       body: JSON.stringify(data),
+    }),
+
+  verifyEmail: (token: string) =>
+    api<{ success: boolean; message: string }>(`/auth/verify-email?token=${encodeURIComponent(token)}`),
+
+  resendVerification: (email: string) =>
+    api<{ success: boolean; message: string }>("/auth/resend-verification", {
+      method: "POST",
+      body: JSON.stringify({ email }),
     }),
 
   logout: () =>
@@ -104,6 +115,12 @@ export const authApi = {
       body: JSON.stringify({ email }),
     }),
 
+  resetPassword: (token: string, password: string) =>
+    api<{ success: boolean; message: string }>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
+    }),
+
   changePassword: (currentPassword: string, newPassword: string) =>
     api<{ success: boolean; message: string }>("/auth/change-password", {
       method: "POST",
@@ -112,6 +129,41 @@ export const authApi = {
         new_password: newPassword,
       }),
     }),
+};
+
+export const statsApi = {
+  getPublicStats: () => api<PublicStatsResponse>("/stats/public"),
+};
+
+export const mapsApi = {
+  getLocations: (params?: { city?: string }) => {
+    const q = params?.city ? `?city=${encodeURIComponent(params.city)}` : "";
+    return api<MapLocationsData>(`/maps/locations${q}`);
+  },
+  getNearby: (params?: {
+    latitude?: number;
+    longitude?: number;
+    city?: string;
+    radius_km?: number;
+    blood_group?: string;
+  }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.latitude !== undefined) searchParams.set("latitude", String(params.latitude));
+    if (params?.longitude !== undefined) searchParams.set("longitude", String(params.longitude));
+    if (params?.city) searchParams.set("city", params.city);
+    if (params?.radius_km) searchParams.set("radius_km", String(params.radius_km));
+    if (params?.blood_group) searchParams.set("blood_group", params.blood_group);
+    const q = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return api<NearbyMapData>(`/maps/nearby${q}`);
+  },
+};
+
+export const searchApi = {
+  globalSearch: (q: string, category?: string) => {
+    const params = new URLSearchParams({ q });
+    if (category) params.append("category", category);
+    return api<GlobalSearchResponse>(`/search/global?${params.toString()}`);
+  },
 };
 
 export const patientApi = {
@@ -261,6 +313,49 @@ export const notificationApi = {
   markAllRead: () => api<{ success: boolean }>("/notifications/read-all", { method: "PUT" }),
 };
 
+export const emergencyApi = {
+  create: (data: EmergencyRequestPayload) =>
+    api<EmergencyRequestData>("/emergency-requests", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  list: (params?: { status?: string; city?: string; blood_group?: string }) => {
+    const qs = params
+      ? "?" + new URLSearchParams(params as Record<string, string>).toString()
+      : "";
+    return api<EmergencyRequestData[]>(`/emergency-requests${qs}`);
+  },
+  getMy: () => api<EmergencyRequestData[]>("/emergency-requests/my"),
+  getById: (id: string) => api<EmergencyRequestData>(`/emergency-requests/${id}`),
+  getMatches: (id: string) =>
+    api<EmergencyMatchesData>(`/emergency-requests/${id}/matches`),
+  updateStatus: (id: string, status: string, notes?: string) =>
+    api<EmergencyRequestData>(`/emergency-requests/${id}/status`, {
+      method: "PUT",
+      body: JSON.stringify({ status, notes }),
+    }),
+  cancel: (id: string) =>
+    api<EmergencyRequestData>(`/emergency-requests/${id}/cancel`, {
+      method: "POST",
+    }),
+};
+
+export const mapApi = {
+  getLocations: (city?: string) => {
+    const qs = city ? `?city=${encodeURIComponent(city)}` : "";
+    return api<MapLocationsData>(`/maps/locations${qs}`);
+  },
+  getNearby: (latitude: number, longitude: number, radius_km = 50, blood_group?: string) => {
+    const params = new URLSearchParams({
+      latitude: latitude.toString(),
+      longitude: longitude.toString(),
+      radius_km: radius_km.toString(),
+    });
+    if (blood_group) params.set("blood_group", blood_group);
+    return api<NearbyMapData>(`/maps/nearby?${params.toString()}`);
+  },
+};
+
 export const chatApi = {
   sendMessage: (receiverId: string, message: string, requestId?: string) =>
     api<ChatMessage>("/chat/messages", {
@@ -272,6 +367,111 @@ export const chatApi = {
 };
 
 // ── Type definitions ──────────────────────────────────────────────────────────
+
+export interface EmergencyRequestPayload {
+  blood_group: string;
+  units_required: number;
+  city: string;
+  urgency?: string;
+  hospital_id?: string;
+  notes?: string;
+}
+
+export interface EmergencyRequestData {
+  id: string;
+  requester_id: string;
+  hospital_id?: string;
+  hospital_name?: string;
+  requester_name?: string;
+  requester_phone?: string;
+  blood_group: string;
+  units_required: number;
+  city: string;
+  urgency: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EmergencyMatchesData {
+  emergency_request: EmergencyRequestData;
+  compatible_blood_groups: string[];
+  matched_donors: {
+    type: string;
+    donor_id: string;
+    name: string;
+    blood_group: string;
+    city: string;
+    same_city: boolean;
+    availability: boolean;
+    last_donation_date?: string;
+    match_score: number;
+  }[];
+  blood_banks_with_stock: {
+    type: string;
+    blood_bank_id: string;
+    blood_bank_name: string;
+    blood_group: string;
+    units_available: number;
+    city: string;
+    same_city: boolean;
+  }[];
+  total_donors_found: number;
+  total_banks_found: number;
+}
+
+export interface MapLocationsData {
+  hospitals: {
+    id: string;
+    type: string;
+    name: string;
+    registration_number: string;
+    city: string;
+    latitude: number;
+    longitude: number;
+    address: string;
+  }[];
+  blood_banks: {
+    id: string;
+    type: string;
+    name: string;
+    registration_number: string;
+    city: string;
+    latitude: number;
+    longitude: number;
+    address: string;
+    total_units: number;
+    inventory: Record<string, number>;
+  }[];
+  emergency_requests: {
+    id: string;
+    type: string;
+    blood_group: string;
+    units_required: number;
+    urgency: string;
+    city: string;
+    latitude: number;
+    longitude: number;
+    status: string;
+  }[];
+  donor_clusters: {
+    type: string;
+    city: string;
+    available_donors_count: number;
+    latitude: number;
+    longitude: number;
+  }[];
+}
+
+export interface NearbyMapData {
+  user_coordinates: { latitude: number; longitude: number };
+  radius_km: number;
+  hospitals: (MapLocationsData["hospitals"][0] & { distance_km: number })[];
+  blood_banks: (MapLocationsData["blood_banks"][0] & {
+    distance_km: number;
+    has_required_group?: boolean;
+  })[];
+}
 
 export interface ApiUser {
   id: string;
@@ -288,9 +488,19 @@ export interface ApiUser {
 
 export interface ApiAuthResponse {
   success: boolean;
-  user: ApiUser;
-  access_token: string;
-  token_type: string;
+  user?: ApiUser;
+  access_token?: string;
+  token_type?: string;
+}
+
+export interface PublicStatsResponse {
+  success: boolean;
+  registered_donors: number;
+  registered_hospitals: number;
+  registered_bloodbanks: number;
+  completed_donations: number;
+  active_requests: number;
+  lives_saved: number;
 }
 
 export interface RegisterPayload {
@@ -300,6 +510,10 @@ export interface RegisterPayload {
   city: string;
   role: string;
   blood_group?: string;
+  address?: string;
+  hospital_name?: string;
+  blood_bank_name?: string;
+  registration_number?: string;
   password: string;
   confirm_password?: string;
 }
@@ -588,4 +802,61 @@ export interface Conversation {
   last_message: string;
   last_message_at: string;
   unread_count: number;
+}
+
+export interface BloodGroupSearchResult {
+  blood_group: string;
+  can_donate_to: string[];
+  can_receive_from: string[];
+  is_universal_donor: boolean;
+  is_universal_recipient: boolean;
+  available_donors_count: number;
+  available_units_count: number;
+}
+
+export interface FacilitySearchResult {
+  id: string;
+  type: "HOSPITAL" | "BLOOD_BANK";
+  name: string;
+  city: string;
+  address?: string;
+  registration_number?: string;
+  total_units?: number;
+}
+
+export interface RequestSearchResult {
+  id: string;
+  blood_group: string;
+  units_required: number;
+  urgency: string;
+  city: string;
+  status: string;
+  hospital_name?: string;
+  created_at: string;
+}
+
+export interface DonorSearchResult {
+  id: string;
+  name: string;
+  city: string;
+  blood_group?: string;
+  availability: boolean;
+}
+
+export interface QuickActionItem {
+  title: string;
+  path: string;
+  icon: string;
+}
+
+export interface GlobalSearchResponse {
+  success: boolean;
+  data: {
+    query: string;
+    blood_group: BloodGroupSearchResult | null;
+    facilities: FacilitySearchResult[];
+    requests: RequestSearchResult[];
+    donors: DonorSearchResult[];
+    quick_actions: QuickActionItem[];
+  };
 }

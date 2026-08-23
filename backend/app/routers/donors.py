@@ -208,13 +208,8 @@ def accept_request(
     if not blood_req:
         raise HTTPException(status_code=404, detail="Blood request not found.")
 
-    if blood_req.status not in (
-        RequestStatus.PENDING, RequestStatus.ACCEPTED, RequestStatus.PROCESSING
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail="This request is no longer accepting donor responses.",
-        )
+    from ..core.state_machine import validate_request_transition
+    validate_request_transition(blood_req.status, RequestStatus.PROCESSING)
 
     # Advance to PROCESSING (the closest valid DB status to "donor accepted")
     blood_req.status = RequestStatus.PROCESSING

@@ -1,8 +1,15 @@
 import { useState } from "react";
-import { useNavigate, useLocation, Link } from "react-router";
-import { Eye, EyeOff, Loader2, CheckCircle, KeyRound } from "lucide-react";
+import { useNavigate, useSearchParams, useLocation, Link } from "react-router";
+import { Eye, EyeOff, Loader2, CheckCircle2, KeyRound } from "lucide-react";
+import { BloodLinkLogo } from "../../components/shared/BloodLinkLogo";
+import { CodeMorphixLogo } from "../../components/shared/CodeMorphixLogo";
+import { authApi } from "../../services/api";
 
 export function ResetPasswordPage() {
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const token = searchParams.get("token") || (location.state as { token?: string })?.token || "";
+
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -10,80 +17,116 @@ export function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
-  const navigate = useNavigate();
-  const location = useLocation();
-  const isStrongPassword = (value: string) => value.length >= 8 && /[A-Z]/.test(value) && /\d/.test(value) && /[^A-Za-z0-9]/.test(value);
+
+  const isStrongPassword = (value: string) =>
+    value.length >= 8 && /[A-Z]/.test(value) && /\d/.test(value) && /[^A-Za-z0-9]/.test(value);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!password) { setError("Please enter a new password."); return; }
-    if (!isStrongPassword(password)) { setError("Password must meet every strength requirement shown below."); return; }
-    if (password !== confirm) { setError("Passwords do not match."); return; }
+
+    if (!token) {
+      setError("Password reset token is missing. Please request a new reset link from the login page.");
+      return;
+    }
+    if (!password) {
+      setError("Please enter a new password.");
+      return;
+    }
+    if (!isStrongPassword(password)) {
+      setError("Password must meet every strength requirement shown below.");
+      return;
+    }
+    if (password !== confirm) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     setLoading(true);
-    await new Promise((res) => setTimeout(res, 1000));
-    setLoading(false);
-    setDone(true);
+    try {
+      await authApi.resetPassword(token, password);
+      setDone(true);
+    } catch (err: any) {
+      setError(err?.message || "Failed to update password. Your reset link may have expired.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (done) {
     return (
-      <div className="text-center">
-        <div className="w-16 h-16 rounded-2xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-5">
-          <CheckCircle size={32} className="text-green-600" />
+      <div className="text-center w-full">
+        <div className="mb-4 flex justify-center">
+          <BloodLinkLogo size="md" />
         </div>
-        <h2 className="text-2xl font-bold text-foreground mb-2">Password reset!</h2>
+        <div className="w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center mx-auto mb-5 text-emerald-600 dark:text-emerald-400">
+          <CheckCircle2 size={34} />
+        </div>
+        <h2 className="text-2xl font-bold text-foreground mb-2">Password reset successful!</h2>
         <p className="text-muted-foreground text-sm leading-relaxed mb-6">
-          Your password has been updated successfully. You can now sign in with your new password.
+          Your password has been updated securely. You can now sign in to your BloodLink account.
         </p>
         <Link
           to="/login"
-          className="block w-full py-3 rounded-xl bg-red-600 text-white font-semibold text-sm text-center hover:bg-red-700 transition-colors"
+          className="block w-full py-3 rounded-xl bg-red-600 text-white font-semibold text-sm text-center hover:bg-red-700 transition-colors shadow-sm"
         >
-          Sign In →
+          Sign In Now →
         </Link>
+
+        <div className="mt-8 pt-4 flex justify-center">
+          <CodeMorphixLogo size="sm" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="mb-8">
-        <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4">
-          <KeyRound size={24} className="text-red-600" />
+    <div className="w-full">
+      <div className="mb-6">
+        <div className="mb-3">
+          <BloodLinkLogo size="md" />
         </div>
-        <h2 className="text-2xl font-bold text-foreground">Set new password</h2>
-        <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-          Choose a strong password for your BloodLink account. It should be at least 8 characters long.
+        <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/50 flex items-center justify-center mb-4 text-red-600 dark:text-red-400">
+          <KeyRound size={24} />
+        </div>
+        <h1 className="text-2xl font-bold text-foreground">Set new password</h1>
+        <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+          Create a secure password for your BloodLink healthcare account.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="new-password" className="text-sm font-medium text-foreground mb-1.5 block">New Password</label>
+          <label htmlFor="new-password" className="text-xs font-semibold text-foreground mb-1.5 block">
+            New Password
+          </label>
           <div className="relative">
             <input
               id="new-password"
               type={showPass ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter new password"
+              placeholder="Min. 8 characters"
               autoFocus
               required
               minLength={8}
-              className="w-full px-4 py-2.5 pr-10 rounded-xl bg-input-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-500/30 text-sm"
+              className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-input-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 text-sm"
             />
-            <button type="button" aria-label={showPass ? "Hide password" : "Show password"} onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+            <button
+              type="button"
+              aria-label={showPass ? "Hide password" : "Show password"}
+              onClick={() => setShowPass(!showPass)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+            >
               {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
-          {password && password.length < 8 && (
-            <p className="text-xs text-red-600 mt-1">At least 8 characters required</p>
-          )}
         </div>
 
         <div>
-          <label htmlFor="confirm-new-password" className="text-sm font-medium text-foreground mb-1.5 block">Confirm New Password</label>
+          <label htmlFor="confirm-new-password" className="text-xs font-semibold text-foreground mb-1.5 block">
+            Confirm New Password
+          </label>
           <div className="relative">
             <input
               id="confirm-new-password"
@@ -93,36 +136,43 @@ export function ResetPasswordPage() {
               placeholder="Repeat new password"
               required
               minLength={8}
-              className="w-full px-4 py-2.5 pr-10 rounded-xl bg-input-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-500/30 text-sm"
+              className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-input-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 text-sm"
             />
-            <button type="button" aria-label={showConfirm ? "Hide password confirmation" : "Show password confirmation"} onClick={() => setShowConfirm(!showConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+            <button
+              type="button"
+              aria-label={showConfirm ? "Hide password confirmation" : "Show password confirmation"}
+              onClick={() => setShowConfirm(!showConfirm)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+            >
               {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
-          {confirm && password !== confirm && (
-            <p className="text-xs text-red-600 mt-1">Passwords do not match</p>
-          )}
         </div>
 
-        {/* Password checks */}
+        {/* Password Strength Checklist */}
         {password && (
-          <div className="bg-muted/50 rounded-xl p-3 grid grid-cols-2 gap-1.5">
+          <div className="bg-muted/40 rounded-xl p-3 grid grid-cols-2 gap-2 text-xs">
             {[
               { label: "8+ characters", pass: password.length >= 8 },
               { label: "Uppercase letter", pass: /[A-Z]/.test(password) },
               { label: "Number", pass: /\d/.test(password) },
               { label: "Special character", pass: /[^A-Za-z0-9]/.test(password) },
             ].map((c) => (
-              <div key={c.label} className="flex items-center gap-1.5 text-xs">
-                <CheckCircle size={11} className={c.pass ? "text-green-500" : "text-muted-foreground/40"} />
-                <span className={c.pass ? "text-foreground" : "text-muted-foreground"}>{c.label}</span>
+              <div key={c.label} className="flex items-center gap-1.5">
+                <CheckCircle2
+                  size={13}
+                  className={c.pass ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/40"}
+                />
+                <span className={c.pass ? "text-foreground font-medium" : "text-muted-foreground"}>
+                  {c.label}
+                </span>
               </div>
             ))}
           </div>
         )}
 
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm rounded-xl px-4 py-3">
+          <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 text-xs rounded-xl p-3">
             {error}
           </div>
         )}
@@ -130,11 +180,28 @@ export function ResetPasswordPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3 rounded-xl bg-red-600 text-white font-semibold text-sm hover:bg-red-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+          className="w-full py-2.5 rounded-xl bg-red-600 text-white font-semibold text-sm hover:bg-red-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-60 shadow-sm cursor-pointer"
         >
-          {loading ? <><Loader2 size={16} className="animate-spin" /> Updating...</> : "Reset Password"}
+          {loading ? (
+            <>
+              <Loader2 size={16} className="animate-spin" /> Updating password...
+            </>
+          ) : (
+            "Reset Password"
+          )}
         </button>
       </form>
+
+      <div className="text-center text-xs text-muted-foreground mt-5">
+        Remember your password?{" "}
+        <Link to="/login" className="text-red-600 dark:text-red-400 font-bold hover:underline">
+          Sign in
+        </Link>
+      </div>
+
+      <div className="mt-8 pt-4 flex justify-center">
+        <CodeMorphixLogo size="sm" />
+      </div>
     </div>
   );
 }

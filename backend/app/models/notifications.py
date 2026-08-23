@@ -26,24 +26,14 @@ from sqlalchemy import (
     Index,
 )
 from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
+from sqlalchemy.sql import func
 import uuid
 
 from ..core.database import Base
 
 
-def _now():
-    return datetime.now(timezone.utc)
-
-
 def _uuid():
     return str(uuid.uuid4())
-
-def _now():
-    return datetime.now(timezone.utc)
-
-
-from ..core.database import Base
 
 
 # ---------------------------------------------------------------------------
@@ -84,7 +74,12 @@ class Notification(Base):
         default=False,
     )
 
-    created_at = Column("createdAt", DateTime(timezone=True), default=_now, nullable=False)
+    created_at = Column(
+        "createdAt",
+        DateTime(),
+        default=func.now(),
+        nullable=False,
+    )
 
     # ----------------------------------------------------------------
     # Relationships
@@ -154,7 +149,12 @@ class AuditLog(Base):
         nullable=True,
     )
 
-    created_at = Column("createdAt", DateTime(timezone=True), default=_now, nullable=False)
+    created_at = Column(
+        "createdAt",
+        DateTime(),
+        default=func.now(),
+        nullable=False,
+    )
 
     # ----------------------------------------------------------------
     # Relationships

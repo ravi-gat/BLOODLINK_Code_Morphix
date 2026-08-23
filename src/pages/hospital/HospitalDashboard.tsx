@@ -2,13 +2,14 @@ import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import {
   Droplets, AlertTriangle, ArrowRight, Plus, TrendingUp,
-  CheckCircle, Clock,
+  CheckCircle, Clock, Map,
 } from "lucide-react";
 import { PageHeader } from "../../components/shared/PageHeader";
 import { StatCard } from "../../components/shared/StatCard";
 import { BloodTypePill } from "../../components/shared/BloodTypePill";
 import { UrgencyBadge, InventoryStatusBadge } from "../../components/shared/StatusBadge";
 import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
+import { GoogleResourceMap } from "../../components/shared/GoogleResourceMap";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useApi } from "../../hooks/useApi";
 import { hospitalApi, ApiError } from "../../services/api";
@@ -175,6 +176,22 @@ export function HospitalDashboard() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Emergency Resource Map */}
+      <div className="bg-card rounded-2xl border border-border p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Map size={16} className="text-red-600" />
+          <h3 className="font-semibold text-foreground">Emergency Resource Map</h3>
+          <span className="text-xs text-muted-foreground ml-auto">Live hospital, blood bank & emergency request locations</span>
+        </div>
+        <GoogleResourceMap
+          initialFilter="ALL"
+          mapHeight="380px"
+          showDonorClusters={true}
+          initialCity={profile?.city || ""}
+          className="rounded-xl overflow-hidden"
+        />
       </div>
     </div>
   );

@@ -14,7 +14,22 @@ import logging
 
 from .core.config import settings
 from .middleware.rate_limit import limiter, rate_limit_error_handler
-from .routers import auth, patients, donors, hospitals, bloodbanks, admin, notifications, chat
+from .middleware.security_headers import SecurityHeadersMiddleware
+from .middleware.request_logging import RequestLoggingMiddleware
+from .routers import (
+    auth,
+    patients,
+    donors,
+    hospitals,
+    bloodbanks,
+    admin,
+    notifications,
+    chat,
+    emergency,
+    maps,
+    stats,
+    search,
+)
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -32,6 +47,10 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_url="/openapi.json",
 )
+
+# ── Custom Middlewares ────────────────────────────────────────────────────────
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RequestLoggingMiddleware)
 
 # ── Rate limiter ──────────────────────────────────────────────────────────────
 app.state.limiter = limiter
@@ -107,6 +126,38 @@ async def health_check():
     }
 
 
+@app.get("/health/ready", tags=["Health"])
+async def readiness_check():
+    """
+    Readiness probe for load balancers / container orchestrators.
+    Returns HTTP 200 when backend is fully ready to accept live traffic,
+    or HTTP 503 if database connection is failing.
+    """
+    from .core.database import SessionLocal
+    try:
+        db = SessionLocal()
+        db.execute(__import__("sqlalchemy").text("SELECT 1"))
+        db.close()
+        return {
+            "ready": True,
+            "status": "ready",
+            "service": "bloodlink-backend",
+            "database": "connected",
+        }
+    except Exception as e:
+        logger.error(f"Readiness check failed: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "ready": False,
+                "status": "unavailable",
+                "service": "bloodlink-backend",
+                "database": "disconnected",
+                "message": "Database connection is not ready.",
+            },
+        )
+
+
 # ── Routers ───────────────────────────────────────────────────────────────────
 # All routers are prefixed with /api
 
@@ -120,6 +171,10 @@ app.include_router(bloodbanks.router, prefix=API_PREFIX)
 app.include_router(admin.router, prefix=API_PREFIX)
 app.include_router(notifications.router, prefix=API_PREFIX)
 app.include_router(chat.router, prefix=API_PREFIX)
+app.include_router(emergency.router, prefix=API_PREFIX)
+app.include_router(maps.router, prefix=API_PREFIX)
+app.include_router(stats.router, prefix=API_PREFIX)
+app.include_router(search.router, prefix=API_PREFIX)
 
 
 @app.on_event("startup")

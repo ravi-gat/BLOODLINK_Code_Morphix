@@ -26,14 +26,15 @@ from sqlalchemy.orm import Session
 from ..core.database import get_db
 from ..core.deps import get_blood_bank_user
 from ..models.user import User
-from ..models.profiles import BloodBank
-from ..models.blood import BloodRequest, BloodInventory
+from ..models.profiles import BloodBank, Donor
+from ..models.blood import BloodRequest, BloodInventory, Donation
 from ..models.enums import RequestStatus
 from ..schemas.bloodbank import (
     BloodBankProfileUpdate, BloodBankProfileResponse,
     BBInventoryCreate, BBInventoryUpdate, BBInventoryResponse,
 )
 from ..schemas.patient import BloodRequestResponse
+from ..schemas.donor import DonationCreate, DonationResponse
 from ..utils.helpers import label_to_bg, bg_to_label, fmt_datetime, fmt_date
 from ..services.audit_service import log_action
 import logging
@@ -163,6 +164,9 @@ def add_inventory(
     # expiryDate is NOT NULL in the DB — require a value
     if body.expiry_date is None:
         raise HTTPException(status_code=400, detail="expiry_date is required.")
+
+    if body.units_available < 0:
+        raise HTTPException(status_code=400, detail="Units available cannot be negative.")
 
     item = BloodInventory(
         id=str(uuid.uuid4()).replace("-", ""),
@@ -350,3 +354,99 @@ def get_reports(
             ],
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# Donations
+# ---------------------------------------------------------------------------
+
+@router.get("/bloodbanks/donations", response_model=list[DonationResponse])
+def get_blood_bank_donations(
+    current_user: User = Depends(get_blood_bank_user),
+    db: Session = Depends(get_db),
+):
+    bank = db.query(BloodBank).filter(BloodBank.user_id == current_user.id).first()
+    if not bank:
+        raise HTTPException(status_code=404, detail="Blood bank profile not found.")
+
+    donations = (
+        db.query(Donation)
+        .filter(Donation.blood_bank_id == bank.id)
+        .order_by(Donation.donation_date.desc())
+        .all()
+    )
+    return [
+        DonationResponse(
+            id=d.id,
+            blood_group=bg_to_label(d.blood_group),
+            units=d.units,
+            component_type="Whole Blood",
+            donation_date=fmt_date(d.donation_date) or "",
+            status=d.status,
+            hospital_name=None,
+            blood_bank_name=bank.name,
+            notes=None,
+            created_at=fmt_datetime(d.created_at) or "",
+        )
+        for d in donations
+    ]
+
+
+@router.post("/bloodbanks/donations", response_model=DonationResponse, status_code=201)
+def record_blood_bank_donation(
+    body: DonationCreate,
+    req: Request,
+    current_user: User = Depends(get_blood_bank_user),
+    db: Session = Depends(get_db),
+):
+    bank = db.query(BloodBank).filter(BloodBank.user_id == current_user.id).first()
+    if not bank:
+        raise HTTPException(status_code=404, detail="Blood bank profile not found.")
+
+    donor = db.query(Donor).filter(Donor.id == body.donor_id).first()
+    if not donor:
+        raise HTTPException(status_code=404, detail="Donor not found.")
+
+    bg = label_to_bg(body.blood_group)
+    if not bg:
+        raise HTTPException(status_code=400, detail="Invalid blood group.")
+
+    donation = Donation(
+        id=str(uuid.uuid4()).replace("-", ""),
+        donor_id=donor.id,
+        blood_bank_id=bank.id,
+        hospital_id=None,
+        blood_group=bg,
+        units=body.units,
+        status=body.status or "COMPLETED",
+    )
+    db.add(donation)
+    db.flush()
+
+    # Update donor last donation date
+    donor.last_donation_date = donation.donation_date
+
+    log_action(
+        db,
+        "RECORD_DONATION",
+        user_id=current_user.id,
+        entity="Donation",
+        entity_id=donation.id,
+        extra={"units": body.units, "donor_id": donor.id},
+        ip_address=req.client.host if req.client else None,
+    )
+    db.commit()
+    db.refresh(donation)
+
+    return DonationResponse(
+        id=donation.id,
+        blood_group=bg_to_label(donation.blood_group),
+        units=donation.units,
+        component_type="Whole Blood",
+        donation_date=fmt_date(donation.donation_date) or "",
+        status=donation.status,
+        hospital_name=None,
+        blood_bank_name=bank.name,
+        notes=None,
+        created_at=fmt_datetime(donation.created_at) or "",
+    )

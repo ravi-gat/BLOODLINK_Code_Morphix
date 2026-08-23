@@ -19,13 +19,6 @@ import { useApi } from "../../hooks/useApi";
 import { patientApi } from "../../services/api";
 import type { BloodGroup, UrgencyLevel, RequestStatus } from "../../types";
 
-// Static chart data — represents platform-wide activity (demo data)
-const MONTHLY_DATA = [
-  { month: "Mar", requests: 34 }, { month: "Apr", requests: 38 },
-  { month: "May", requests: 52 }, { month: "Jun", requests: 47 },
-  { month: "Jul", requests: 61 }, { month: "Aug", requests: 55 },
-];
-
 export function PatientDashboard() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
@@ -256,10 +249,29 @@ export function PatientDashboard() {
       <div className="bg-card rounded-2xl border border-border p-6">
         <div className="flex items-center gap-2 mb-4">
           <TrendingUp size={16} className="text-red-600" />
-          <h3 className="font-semibold text-foreground">Platform Activity (Demo Data)</h3>
+          <h3 className="font-semibold text-foreground">Your Request Activity</h3>
         </div>
         <ResponsiveContainer width="100%" height={200}>
-          <AreaChart data={MONTHLY_DATA}>
+          <AreaChart data={
+            (() => {
+              const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+              const currentMonthIdx = new Date().getMonth();
+              const last6Months = Array.from({ length: 6 }, (_, i) => {
+                const d = new Date();
+                d.setMonth(currentMonthIdx - 5 + i);
+                return { month: months[d.getMonth()], year: d.getFullYear(), monthIdx: d.getMonth(), count: 0 };
+              });
+              (myRequests || []).forEach((req) => {
+                if (!req.created_at) return;
+                const reqDate = new Date(req.created_at);
+                const m = reqDate.getMonth();
+                const y = reqDate.getFullYear();
+                const found = last6Months.find((item) => item.monthIdx === m && item.year === y);
+                if (found) found.count += 1;
+              });
+              return last6Months.map((item) => ({ month: item.month, requests: item.count }));
+            })()
+          }>
             <defs>
               <linearGradient id="pColDon" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#E53935" stopOpacity={0.15} />
@@ -273,7 +285,6 @@ export function PatientDashboard() {
             <Area type="monotone" dataKey="requests" stroke="#E53935" strokeWidth={2} fill="url(#pColDon)" name="Requests" />
           </AreaChart>
         </ResponsiveContainer>
-        <p className="text-xs text-muted-foreground mt-2 text-center">Chart shows demo data. Real analytics coming soon.</p>
       </div>
     </div>
   );

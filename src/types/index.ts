@@ -18,25 +18,39 @@ export interface User {
   createdAt: string;
 }
 
+export interface PublicStats {
+  registeredDonors: number;
+  registeredHospitals: number;
+  registeredBloodbanks: number;
+  completedDonations: number;
+  activeRequests: number;
+  livesSaved: number;
+}
+
 export interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string, role: UserRole) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
+  login: (email: string, password: string, role?: UserRole) => Promise<void>;
+  register: (data: RegisterData) => Promise<{ requiresVerification: boolean }>;
   logout: () => void;
   setUser: (user: User) => void;
+  restoreSession: () => Promise<void>;
 }
 
 export interface RegisterData {
   name: string;
   email: string;
   password: string;
-  confirmPassword: string;
+  confirmPassword?: string;
   role: UserRole;
   bloodGroup?: BloodGroup;
   phone: string;
   city: string;
+  address?: string;
+  hospitalName?: string;
+  bloodBankName?: string;
+  registrationNumber?: string;
 }
 
 // ─── Donor ───────────────────────────────────────────────────────────────────

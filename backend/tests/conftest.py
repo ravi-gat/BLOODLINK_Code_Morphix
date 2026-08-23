@@ -48,6 +48,33 @@ def override_get_db():
 
 app.dependency_overrides[get_db] = override_get_db
 
+from app.middleware.rate_limit import limiter
+limiter.enabled = False
+
+# ---------------------------------------------------------------------------
+# Mock SMTP so tests never send real emails
+# ---------------------------------------------------------------------------
+# Patch email_service.send_verification_email and
+# send_password_reset_email to return True without touching SMTP.
+# This is module-scoped via autouse fixture below.
+
+import unittest.mock as mock
+
+@pytest.fixture(scope="session", autouse=True)
+def mock_email_service():
+    """
+    Replace email sending with a no-op during tests.
+    Real SMTP must never be called from pytest.
+    """
+    with mock.patch(
+        "app.services.email_service.send_verification_email",
+        return_value=True,
+    ) as m1, mock.patch(
+        "app.services.email_service.send_password_reset_email",
+        return_value=True,
+    ) as m2:
+        yield {"send_verification_email": m1, "send_password_reset_email": m2}
+
 
 # ---------------------------------------------------------------------------
 # Schema creation
@@ -192,6 +219,13 @@ def hospital_user(db):
 def admin_user(db):
     return _get_or_create_user(
         db, "testadmin@test.com", "Test Admin", "+91 98000 00004", UserRole.ADMIN
+    )
+
+
+@pytest.fixture(scope="session")
+def blood_bank_user(db):
+    return _get_or_create_user(
+        db, "testbb@test.com", "Test Blood Bank", "+91 98000 00005", UserRole.BLOOD_BANK
     )
 
 

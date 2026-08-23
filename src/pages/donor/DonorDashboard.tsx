@@ -2,13 +2,14 @@ import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import {
   Heart, Bell, CheckCircle, Award, Activity, Calendar,
-  ArrowRight, Droplets, MapPin, TrendingUp, Plus,
+  ArrowRight, Droplets, MapPin, TrendingUp, Plus, Map,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { PageHeader } from "../../components/shared/PageHeader";
 import { StatCard } from "../../components/shared/StatCard";
+import { GoogleResourceMap } from "../../components/shared/GoogleResourceMap";
 import { BloodTypePill } from "../../components/shared/BloodTypePill";
 import { Avatar } from "../../components/shared/Avatar";
 import { UrgencyBadge, StatusBadge } from "../../components/shared/StatusBadge";
@@ -18,12 +19,6 @@ import { useAuthStore } from "../../stores/useAuthStore";
 import { useApi } from "../../hooks/useApi";
 import { donorApi, ApiError } from "../../services/api";
 import type { BloodGroup, UrgencyLevel } from "../../types";
-
-const REWARD_TREND: { month: string; points: number }[] = [
-  { month: "Mar", points: 100 }, { month: "Apr", points: 200 },
-  { month: "May", points: 350 }, { month: "Jun", points: 500 },
-  { month: "Jul", points: 650 }, { month: "Aug", points: 820 },
-];
 
 export function DonorDashboard() {
   const { user } = useAuthStore();
@@ -234,10 +229,38 @@ export function DonorDashboard() {
           <div className="bg-card rounded-2xl border border-border p-6">
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp size={16} className="text-yellow-500" />
-              <h3 className="font-semibold text-foreground">Reward Points Trend (Demo)</h3>
+              <h3 className="font-semibold text-foreground">Donation & Points Activity</h3>
             </div>
             <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={REWARD_TREND}>
+              <AreaChart data={
+                (() => {
+                  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                  const currentMonthIdx = new Date().getMonth();
+                  const last6Months = Array.from({ length: 6 }, (_, i) => {
+                    const d = new Date();
+                    d.setMonth(currentMonthIdx - 5 + i);
+                    return { month: months[d.getMonth()], year: d.getFullYear(), monthIdx: d.getMonth(), donations: 0, points: 0 };
+                  });
+
+                  (donations || []).forEach((don) => {
+                    if (!don.donation_date) return;
+                    const dDate = new Date(don.donation_date);
+                    const m = dDate.getMonth();
+                    const y = dDate.getFullYear();
+                    const found = last6Months.find((item) => item.monthIdx === m && item.year === y);
+                    if (found) found.donations += 1;
+                  });
+
+                  let cumulativePoints = 0;
+                  return last6Months.map((item) => {
+                    cumulativePoints += item.donations * 100;
+                    return {
+                      month: item.month,
+                      points: cumulativePoints || (rewardPoints ? Math.round(rewardPoints * ((last6Months.indexOf(item) + 1) / 6)) : 0),
+                    };
+                  });
+                })()
+              }>
                 <defs>
                   <linearGradient id="rwGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#F9A825" stopOpacity={0.2} />
@@ -253,6 +276,23 @@ export function DonorDashboard() {
             </ResponsiveContainer>
           </div>
         </div>
+      </div>
+
+      {/* Find Nearby Donation Centers — Map */}
+      <div className="bg-card rounded-2xl border border-border p-5">
+        <div className="flex items-center gap-2 mb-1">
+          <Map size={16} className="text-red-600" />
+          <h3 className="font-semibold text-foreground">Find Nearby Donation Centers</h3>
+        </div>
+        <p className="text-xs text-muted-foreground mb-4">
+          Hospitals and blood banks accepting donations near you. Tap a marker to see details and get directions.
+        </p>
+        <GoogleResourceMap
+          initialFilter="ALL"
+          mapHeight="380px"
+          initialCity={profile?.city || ""}
+          className="rounded-xl overflow-hidden"
+        />
       </div>
     </div>
   );

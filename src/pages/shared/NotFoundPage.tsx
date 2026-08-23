@@ -1,8 +1,9 @@
 import { useNavigate } from "react-router";
-import { Droplets, ArrowLeft, Home } from "lucide-react";
+import { ArrowLeft, Home } from "lucide-react";
 import { useAuthStore } from "../../stores/useAuthStore";
 import type { UserRole } from "../../types";
 import { useThemeStore } from "../../stores/useThemeStore";
+import { BloodLinkLogo } from "../../components/shared/BloodLinkLogo";
 
 const DASHBOARD_PATHS: Record<UserRole, string> = {
   patient: "/patient/dashboard",
@@ -29,11 +30,8 @@ export function NotFoundPage() {
     <div className={dark ? "dark" : ""} style={{ fontFamily: "'Inter', sans-serif" }}>
       <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
         {/* Logo */}
-        <div className="flex items-center gap-2.5 mb-12">
-          <div className="w-9 h-9 rounded-xl bg-red-600 flex items-center justify-center">
-            <Droplets size={20} className="text-white" />
-          </div>
-          <span className="font-bold text-xl text-foreground tracking-tight">BloodLink</span>
+        <div className="mb-12">
+          <BloodLinkLogo size="lg" />
         </div>
 
         {/* 404 */}

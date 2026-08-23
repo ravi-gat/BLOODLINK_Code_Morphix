@@ -50,6 +50,14 @@ class DonorPublicResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class DonationCreate(BaseModel):
+    donor_id: str
+    blood_group: str
+    units: int
+    donation_date: Optional[str] = None
+    status: Optional[str] = "COMPLETED"
+
+
 class DonationResponse(BaseModel):
     id: str
     blood_group: str

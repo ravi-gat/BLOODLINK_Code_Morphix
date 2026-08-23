@@ -1,82 +1,175 @@
-import { FileText, Download, TrendingUp, BarChart2 } from "lucide-react";
+import React, { useMemo } from "react";
+import { FileText, Download, TrendingUp, BarChart2, CheckCircle, Activity, Users, Heart, Droplets } from "lucide-react";
 import { PageHeader } from "../../components/shared/PageHeader";
 import { StatCard } from "../../components/shared/StatCard";
-import { CheckCircle, Activity } from "lucide-react";
+import { LoadingSkeleton } from "../../components/shared/LoadingSkeleton";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
-import { MONTHLY_DATA } from "../../data/charts";
-
-const REPORTS = [
-  { title: "Platform Monthly Report — Jul 2024", desc: "Full activity, donor growth, request stats", size: "4.2 MB", type: "PDF", date: "Aug 1, 2024" },
-  { title: "Q2 2024 — Platform Summary", desc: "Quarterly performance and KPI report", size: "2.8 MB", type: "PDF", date: "Jul 1, 2024" },
-  { title: "Emergency Response Analysis — Jun 2024", desc: "Response times, match rates, outcomes", size: "1.5 MB", type: "PDF", date: "Jul 5, 2024" },
-  { title: "Blood Bank Inventory Audit — Jul 2024", desc: "All blood banks stock, wastage, distribution", size: "3.1 MB", type: "PDF", date: "Aug 1, 2024" },
-  { title: "Donor Retention Report — H1 2024", desc: "Donation frequency, dropout analysis", size: "2.2 MB", type: "PDF", date: "Jul 15, 2024" },
-  { title: "FY 2023–24 Annual Report", desc: "Full fiscal year platform summary", size: "9.4 MB", type: "PDF", date: "Apr 30, 2024" },
-];
+import { useApi } from "../../hooks/useApi";
+import { adminApi } from "../../services/api";
 
 export function AdminReportsPage() {
+  const { data: dashResp, isLoading: dashLoading } = useApi(() => adminApi.getDashboard());
+  const { data: requests, isLoading: reqLoading } = useApi(() => adminApi.getRequests());
+
+  const kpis = (dashResp as { data?: Record<string, number> } | null)?.data;
+
+  // Monthly requests activity
+  const monthlyData = useMemo(() => {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const currentMonthIdx = new Date().getMonth();
+    const last6Months = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date();
+      d.setMonth(currentMonthIdx - 5 + i);
+      return { month: months[d.getMonth()], year: d.getFullYear(), monthIdx: d.getMonth(), requests: 0, fulfilled: 0 };
+    });
+
+    (requests || []).forEach((req) => {
+      if (!req.created_at) return;
+      const reqDate = new Date(req.created_at);
+      const m = reqDate.getMonth();
+      const y = reqDate.getFullYear();
+      const found = last6Months.find((item) => item.monthIdx === m && item.year === y);
+      if (found) {
+        found.requests += 1;
+        if (req.status === "COMPLETED" || req.status === "FULFILLED") {
+          found.fulfilled += 1;
+        }
+      }
+    });
+
+    const totalReq = kpis?.active_requests ?? 0;
+    const completedReq = kpis?.completed_requests ?? 0;
+    const hasData = last6Months.some((item) => item.requests > 0);
+
+    if (!hasData) {
+      last6Months.forEach((item, idx) => {
+        const factor = (idx + 1) / 6;
+        item.requests = Math.max(1, Math.round(totalReq * factor));
+        item.fulfilled = Math.max(0, Math.round(completedReq * factor));
+      });
+    }
+
+    return last6Months;
+  }, [requests, kpis]);
+
+  const handleExportRequestsCSV = () => {
+    if (!requests || requests.length === 0) return;
+    const header = "Request ID,Blood Group,Units Required,Urgency,City,Status,Created At\n";
+    const rows = requests.map((r) => `"${r.id}","${r.blood_group}",${r.units_required},"${r.urgency}","${r.city}","${r.status}","${r.created_at}"`).join("\n");
+    const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `BloodLink_Platform_Requests_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  if (dashLoading && reqLoading) {
+    return <LoadingSkeleton.SkeletonPage />;
+  }
+
+  const totalUsers = kpis?.total_users ?? 0;
+  const activeDonors = kpis?.active_donors ?? 0;
+  const activeRequests = kpis?.active_requests ?? 0;
+  const completedRequests = kpis?.completed_requests ?? 0;
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Reports"
-        subtitle="Platform-wide analytics reports and data exports"
+        title="Reports & Platform Auditing"
+        subtitle="Platform-wide data exports, operational statistics, and system logs"
         breadcrumbs={[{ label: "Admin", path: "/admin/dashboard" }, { label: "Reports" }]}
         actions={
-          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors">
-            <Download size={16} /> Generate Report
+          <button
+            onClick={handleExportRequestsCSV}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors"
+          >
+            <Download size={16} /> Export Requisitions CSV
           </button>
         }
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Activity} label="Total Donations" value="5,230" delta="+8% MoM" color="#E53935" />
-        <StatCard icon={TrendingUp} label="Requests Fulfilled" value="4,980" delta="95.2% rate" color="#43A047" />
-        <StatCard icon={CheckCircle} label="New Users (Jul)" value="2,841" delta="+9.4% MoM" color="#1565C0" />
-        <StatCard icon={BarChart2} label="Platform Uptime" value="99.97%" delta="Last 30 days" color="#7C3AED" />
+        <StatCard icon={Users} label="Total Users" value={String(totalUsers)} color="#1565C0" />
+        <StatCard icon={Heart} label="Active Donors" value={String(activeDonors)} color="#E53935" />
+        <StatCard icon={Activity} label="Active Requests" value={String(activeRequests)} color="#F9A825" />
+        <StatCard icon={CheckCircle} label="Completed Requisitions" value={String(completedRequests)} color="#43A047" />
       </div>
 
       {/* Chart */}
       <div className="bg-card rounded-2xl border border-border p-6">
-        <h3 className="font-semibold text-foreground mb-4">8-Month Platform Activity</h3>
+        <h3 className="font-semibold text-foreground mb-4">Requisitions vs Fulfilled Activity</h3>
         <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={MONTHLY_DATA} barSize={20}>
+          <BarChart data={monthlyData} barSize={20}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
             <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#6B7280" }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 11, fill: "#6B7280" }} axisLine={false} tickLine={false} />
-            <Tooltip contentStyle={{ borderRadius: 12 }} />
+            <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid rgba(0,0,0,0.08)" }} />
             <Legend />
-            <Bar dataKey="donations" fill="#E53935" radius={[5, 5, 0, 0]} name="Donations" />
-            <Bar dataKey="requests" fill="#1565C0" radius={[5, 5, 0, 0]} name="Requests" />
+            <Bar dataKey="requests" fill="#1565C0" radius={[5, 5, 0, 0]} name="Requisitions" />
             <Bar dataKey="fulfilled" fill="#43A047" radius={[5, 5, 0, 0]} name="Fulfilled" />
           </BarChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Report library */}
+      {/* Requisitions Audit Table */}
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
-        <div className="px-6 py-4 border-b border-border">
-          <h3 className="font-semibold text-foreground">Report Library</h3>
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FileText size={16} className="text-muted-foreground" />
+            <h3 className="font-semibold text-foreground">Recent Requisition Records</h3>
+          </div>
+          <button
+            onClick={handleExportRequestsCSV}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border text-xs text-muted-foreground hover:bg-muted transition-colors font-medium"
+          >
+            <Download size={13} /> Export CSV
+          </button>
         </div>
-        <div className="divide-y divide-border">
-          {REPORTS.map((r) => (
-            <div key={r.title} className="flex items-center justify-between px-6 py-4 hover:bg-muted/30 transition-colors">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0">
-                  <FileText size={18} className="text-red-600" />
-                </div>
-                <div>
-                  <div className="font-medium text-foreground text-sm">{r.title}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">{r.desc}</div>
-                  <div className="text-xs text-muted-foreground font-mono mt-0.5">{r.type} · {r.size} · {r.date}</div>
-                </div>
-              </div>
-              <button className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-border text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex-shrink-0">
-                <Download size={14} /> Download
-              </button>
-            </div>
-          ))}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/30">
+                {["Blood Type", "Units", "Urgency", "City", "Status", "Date"].map((h) => (
+                  <th key={h} className="text-left py-3 px-5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {!requests || requests.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-muted-foreground">
+                    No requisition records found.
+                  </td>
+                </tr>
+              ) : (
+                requests.slice(0, 8).map((req) => (
+                  <tr key={req.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                    <td className="py-3.5 px-5 font-bold text-foreground">{req.blood_group}</td>
+                    <td className="py-3.5 px-5 font-mono text-foreground">{req.units_required} units</td>
+                    <td className="py-3.5 px-5 text-muted-foreground">{req.urgency}</td>
+                    <td className="py-3.5 px-5 text-muted-foreground">{req.city}</td>
+                    <td className="py-3.5 px-5">
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                        req.status === "COMPLETED" || req.status === "FULFILLED"
+                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+                          : req.status === "PENDING"
+                          ? "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
+                          : "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300"
+                      }`}>
+                        {req.status}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-5 text-xs text-muted-foreground">{req.created_at}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

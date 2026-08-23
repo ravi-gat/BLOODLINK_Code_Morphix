@@ -27,11 +27,7 @@ from sqlalchemy import (
     ForeignKey,
 )
 from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
-
-def _now():
-    return datetime.now(timezone.utc)
-
+from sqlalchemy.sql import func
 
 from ..core.database import Base
 from .enums import BloodGroup, EmergencyStatus
@@ -104,8 +100,19 @@ class EmergencyRequest(Base):
     # Timestamps
     # ----------------------------------------------------------------
 
-    created_at = Column("createdAt", DateTime(), nullable=False)
-    updated_at = Column("updatedAt", DateTime(), nullable=False)
+    created_at = Column(
+        "createdAt",
+        DateTime(),
+        default=func.now(),
+        nullable=False,
+    )
+    updated_at = Column(
+        "updatedAt",
+        DateTime(),
+        default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
 
     # ----------------------------------------------------------------
     # Relationships

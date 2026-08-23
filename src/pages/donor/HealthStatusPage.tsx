@@ -1,72 +1,119 @@
-import { Activity, CheckCircle, AlertTriangle, TrendingUp } from "lucide-react";
+import { useState } from "react";
+import { Activity, CheckCircle, AlertTriangle, TrendingUp, ShieldCheck, HeartPulse, RefreshCw } from "lucide-react";
 import { PageHeader } from "../../components/shared/PageHeader";
 import { StatusBadge } from "../../components/shared/StatusBadge";
 import {
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  ResponsiveContainer,
+  Tooltip,
 } from "recharts";
 
-const HEALTH_METRICS = [
-  { metric: "Hemoglobin", value: 14.2, unit: "g/dL", normal: "12–17", status: "good", icon: "🩸" },
-  { metric: "Blood Pressure", value: "118/76", unit: "mmHg", normal: "<120/80", status: "good", icon: "💓" },
-  { metric: "Pulse Rate", value: 72, unit: "bpm", normal: "60–100", status: "good", icon: "❤️" },
-  { metric: "Temperature", value: 98.4, unit: "°F", normal: "98–99", status: "good", icon: "🌡️" },
-  { metric: "Weight", value: 72, unit: "kg", normal: ">50 kg", status: "good", icon: "⚖️" },
-  { metric: "Last Check", value: "Mar 12, 2024", unit: "", normal: "< 3 months", status: "good", icon: "📅" },
-];
+interface CheckItem {
+  id: string;
+  label: string;
+  category: "vitals" | "history" | "lifestyle";
+  pass: boolean;
+  note?: string;
+  weight: number;
+}
 
-const RADAR_DATA = [
-  { subject: "Hemoglobin", A: 94 },
-  { subject: "BP", A: 96 },
-  { subject: "Pulse", A: 90 },
-  { subject: "Weight", A: 88 },
-  { subject: "Eligibility", A: 94 },
-  { subject: "History", A: 100 },
-];
-
-const AI_CHECKS = [
-  { label: "Blood hemoglobin within safe range", pass: true },
-  { label: "No recent illness or fever", pass: true },
-  { label: "Blood pressure normal", pass: true },
-  { label: "Weight meets minimum requirement", pass: true },
-  { label: "90-day cooldown period completed", pass: false, note: "Eligible Jun 10, 2024" },
-  { label: "No high-risk travel in last 12 months", pass: true },
-  { label: "No recent tattoo or piercing (< 12 months)", pass: true },
-  { label: "No major surgery in last 6 months", pass: true },
+const INITIAL_CHECKS: CheckItem[] = [
+  { id: "c1", label: "Hemoglobin ≥ 12.5 g/dL (tested within safe range)", category: "vitals", pass: true, weight: 20 },
+  { id: "c2", label: "Blood pressure normal (< 140/90 mmHg)", category: "vitals", pass: true, weight: 15 },
+  { id: "c3", label: "Body weight ≥ 50 kg", category: "vitals", pass: true, weight: 15 },
+  { id: "c4", label: "Pulse rate normal (60–100 bpm) without arrhythmia", category: "vitals", pass: true, weight: 10 },
+  { id: "c5", label: "90-day cooldown completed since last whole blood donation", category: "history", pass: true, weight: 15 },
+  { id: "c6", label: "No active infection, fever, or antibiotic use in past 48 hours", category: "history", pass: true, weight: 10 },
+  { id: "c7", label: "No major surgery or blood transfusion in last 6 months", category: "history", pass: true, weight: 10 },
+  { id: "c8", label: "No new tattoo or body piercing in last 6 months", category: "lifestyle", pass: true, weight: 5 },
 ];
 
 export function HealthStatusPage() {
-  const score = 94;
+  const [checks, setChecks] = useState<CheckItem[]>(INITIAL_CHECKS);
+
+  const toggleCheck = (id: string) => {
+    setChecks((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, pass: !c.pass } : c))
+    );
+  };
+
+  const resetChecks = () => {
+    setChecks(INITIAL_CHECKS);
+  };
+
+  const totalScore = checks.reduce((acc, c) => acc + (c.pass ? c.weight : 0), 0);
+  const isEligible = totalScore >= 80;
+
+  const radarData = [
+    { subject: "Hemoglobin", A: checks.find((c) => c.id === "c1")?.pass ? 95 : 40 },
+    { subject: "Vitals (BP/Pulse)", A: checks.filter((c) => c.category === "vitals" && c.pass).length >= 3 ? 95 : 50 },
+    { subject: "Weight & Body", A: checks.find((c) => c.id === "c3")?.pass ? 92 : 30 },
+    { subject: "Cooldown Cycle", A: checks.find((c) => c.id === "c5")?.pass ? 100 : 0 },
+    { subject: "Medical History", A: checks.filter((c) => c.category === "history" && c.pass).length === 3 ? 98 : 45 },
+    { subject: "Lifestyle Safety", A: checks.find((c) => c.id === "c8")?.pass ? 95 : 20 },
+  ];
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Health Status"
-        subtitle="AI-powered eligibility assessment based on your health data"
+        title="Health & Eligibility Assessment"
+        subtitle="Live AI-enabled donor suitability check and vital parameters calculator"
         breadcrumbs={[{ label: "Donor", path: "/donor/dashboard" }, { label: "Health Status" }]}
       />
 
-      {/* AI score hero */}
-      <div className="bg-gradient-to-r from-green-600 to-green-700 rounded-2xl p-6 text-white">
-        <div className="flex items-center justify-between">
+      {/* AI Score Hero Card */}
+      <div
+        className={`rounded-2xl p-6 text-white transition-all shadow-md ${
+          isEligible
+            ? "bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-800"
+            : "bg-gradient-to-r from-amber-600 via-amber-700 to-red-800"
+        }`}
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Activity size={20} />
-              <span className="font-semibold">AI Health Score</span>
+            <div className="flex items-center gap-2 mb-2">
+              <HeartPulse size={22} className="animate-pulse" />
+              <span className="font-bold text-sm tracking-wide uppercase">AI Health Readiness Score</span>
             </div>
-            <div className="text-5xl font-extrabold font-mono">{score}<span className="text-2xl text-green-200">/100</span></div>
-            <p className="text-green-200 text-sm mt-2">
-              Your health profile is <strong className="text-white">excellent</strong>. You are eligible to donate blood.
+            <div className="text-5xl font-extrabold font-mono tracking-tight">
+              {totalScore}
+              <span className="text-2xl text-white/70">/100</span>
+            </div>
+            <p className="text-white/90 text-sm mt-3 leading-relaxed max-w-lg">
+              {isEligible ? (
+                <>
+                  <strong className="text-white">Active & Eligible to Donate.</strong> Your current physical vitals and medical parameters meet clinical transfusion safety protocols.
+                </>
+              ) : (
+                <>
+                  <strong className="text-white">Cooldown / Review Required.</strong> One or more clinical criteria require attention before you can safely donate blood.
+                </>
+              )}
             </p>
           </div>
-          <div className="hidden sm:block">
+
+          <div className="shrink-0 flex items-center justify-center sm:pr-4">
             <div className="relative w-28 h-28">
               <svg viewBox="0 0 36 36" className="w-28 h-28 -rotate-90">
-                <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2.5" />
-                <circle cx="18" cy="18" r="15.9" fill="none" stroke="white" strokeWidth="2.5"
-                  strokeDasharray={`${score} ${100 - score}`} strokeLinecap="round" />
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="3" />
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="15.9"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="3"
+                  strokeDasharray={`${totalScore} ${100 - totalScore}`}
+                  strokeLinecap="round"
+                  className="transition-all duration-500"
+                />
               </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-white font-bold text-xl">{score}</span>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-white font-extrabold text-xl">{totalScore}%</span>
+                <span className="text-[10px] text-white/80 uppercase">{isEligible ? "Ready" : "Hold"}</span>
               </div>
             </div>
           </div>
@@ -74,62 +121,107 @@ export function HealthStatusPage() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Vitals */}
-        <div className="bg-card rounded-2xl border border-border p-6">
-          <h3 className="font-semibold text-foreground mb-4">Health Vitals</h3>
-          <div className="space-y-3">
-            {HEALTH_METRICS.map((m) => (
-              <div key={m.metric} className="flex items-center gap-4 p-3 rounded-xl bg-muted/50">
-                <span className="text-xl flex-shrink-0">{m.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-0.5">
-                    <span className="text-sm font-medium text-foreground">{m.metric}</span>
-                    <StatusBadge text="Normal" color="#43A047" />
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="font-mono font-semibold text-foreground">{m.value} {m.unit}</span>
-                    <span>Normal: {m.normal}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+        {/* Radar Chart */}
+        <div className="bg-card rounded-2xl border border-border p-6 flex flex-col justify-between shadow-2xs">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-bold text-sm text-foreground">Clinical Readiness Radar</h3>
+              <p className="text-xs text-muted-foreground">Multi-dimensional health parameter coverage</p>
+            </div>
+            <span
+              className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                isEligible
+                  ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
+                  : "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300"
+              }`}
+            >
+              {isEligible ? "PASS" : "ACTION REQUIRED"}
+            </span>
+          </div>
+
+          <div className="w-full h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart data={radarData}>
+                <PolarGrid stroke="rgba(150, 150, 150, 0.15)" />
+                <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: "currentColor" }} className="text-muted-foreground" />
+                <Radar
+                  dataKey="A"
+                  stroke={isEligible ? "#10B981" : "#F59E0B"}
+                  fill={isEligible ? "#10B981" : "#F59E0B"}
+                  fillOpacity={0.25}
+                  strokeWidth={2}
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: "12px",
+                    background: "var(--card)",
+                    borderColor: "var(--border)",
+                    color: "var(--foreground)",
+                    fontSize: "12px",
+                  }}
+                />
+              </RadarChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Radar chart */}
-        <div className="bg-card rounded-2xl border border-border p-6">
-          <h3 className="font-semibold text-foreground mb-4">Health Radar</h3>
-          <ResponsiveContainer width="100%" height={240}>
-            <RadarChart data={RADAR_DATA}>
-              <PolarGrid stroke="rgba(0,0,0,0.08)" />
-              <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: "#6B7280" }} />
-              <Radar dataKey="A" stroke="#43A047" fill="#43A047" fillOpacity={0.2} strokeWidth={2} />
-              <Tooltip contentStyle={{ borderRadius: 12 }} />
-            </RadarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* AI eligibility checklist */}
-      <div className="bg-card rounded-2xl border border-border p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <TrendingUp size={16} className="text-green-600" />
-          <h3 className="font-semibold text-foreground">AI Eligibility Checklist</h3>
-        </div>
-        <div className="grid sm:grid-cols-2 gap-2">
-          {AI_CHECKS.map((c) => (
-            <div key={c.label} className={`flex items-start gap-3 p-3 rounded-xl ${c.pass ? "bg-green-50 dark:bg-green-900/10" : "bg-orange-50 dark:bg-orange-900/10"}`}>
-              {c.pass ? (
-                <CheckCircle size={16} className="text-green-500 flex-shrink-0 mt-0.5" />
-              ) : (
-                <AlertTriangle size={16} className="text-orange-500 flex-shrink-0 mt-0.5" />
-              )}
-              <div>
-                <div className={`text-xs font-medium ${c.pass ? "text-green-700 dark:text-green-300" : "text-orange-700 dark:text-orange-300"}`}>{c.label}</div>
-                {c.note && <div className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">{c.note}</div>}
-              </div>
+        {/* Interactive Self-Assessment Checklist */}
+        <div className="bg-card rounded-2xl border border-border p-6 shadow-2xs">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={18} className="text-red-600 dark:text-red-400" />
+              <h3 className="font-bold text-sm text-foreground">Interactive Eligibility Checklist</h3>
             </div>
-          ))}
+            <button
+              type="button"
+              onClick={resetChecks}
+              className="text-xs font-semibold text-muted-foreground hover:text-foreground inline-flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <RefreshCw size={12} /> Reset
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            Click any item to simulate state changes and observe live score adjustments.
+          </p>
+
+          <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">
+            {checks.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => toggleCheck(c.id)}
+                className={`w-full p-3 rounded-xl border text-left transition-all flex items-start gap-3 cursor-pointer ${
+                  c.pass
+                    ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40"
+                    : "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40"
+                }`}
+              >
+                {c.pass ? (
+                  <CheckCircle size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div
+                    className={`text-xs font-semibold leading-snug ${
+                      c.pass ? "text-emerald-900 dark:text-emerald-200" : "text-amber-900 dark:text-amber-200"
+                    }`}
+                  >
+                    {c.label}
+                  </div>
+                </div>
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                    c.pass
+                      ? "bg-emerald-200/60 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200"
+                      : "bg-amber-200/60 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200"
+                  }`}
+                >
+                  {c.pass ? `+${c.weight} pts` : "0 pts"}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>
