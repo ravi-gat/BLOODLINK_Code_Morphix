@@ -1,10 +1,8 @@
-# 🩸 BloodLink
-
 <p align="center">
-  <img src="public/logos/code-morphix.svg" alt="Code Morphix" width="110"/>
+  <img src="public/logos/code-morphix.svg" alt="Code Morphix" width="100"/>
 </p>
 
-<h1 align="center">BloodLink</h1>
+<h1 align="center">🩸 BloodLink</h1>
 
 <p align="center">
   <strong>Healthcare Blood Donation & Emergency Response Platform</strong>
@@ -23,6 +21,55 @@
   emergency response, donor matching, inventory management,
   geolocation, notifications, analytics, and role-based workflows.
 </p>
+
+---
+
+<h2 align="center">🏆 Project Status</h2>
+
+<p align="center">
+
+<img src="https://img.shields.io/badge/BACKEND-FASTAPI-009688?style=for-the-badge" />
+<img src="https://img.shields.io/badge/FRONTEND-REACT%20%2B%20TYPESCRIPT-61DAFB?style=for-the-badge" />
+<img src="https://img.shields.io/badge/DATABASE-POSTGRESQL-336791?style=for-the-badge" />
+
+<br/>
+
+<img src="https://img.shields.io/badge/TESTS-92%2F92%20PASSING-4CAF50?style=for-the-badge" />
+<img src="https://img.shields.io/badge/PRODUCTION%20BUILD-PASSING-4CAF50?style=for-the-badge" />
+<img src="https://img.shields.io/badge/GOOGLE%20MAPS-INTEGRATED-4285F4?style=for-the-badge" />
+
+</p>
+
+---
+
+## 🚀 Overview
+
+**BloodLink** is a full-stack healthcare technology platform designed to
+connect **patients, blood donors, hospitals, and blood banks** through a
+centralized digital ecosystem.
+
+The platform provides:
+
+- 🩸 Blood discovery
+- 🚨 Emergency blood requisitions
+- 🤝 Donor matching
+- 🏥 Hospital operations
+- 🏦 Blood-bank inventory management
+- 🗺️ Healthcare facility geolocation
+- 🔔 Notifications
+- 📊 Analytics
+- 🔐 Secure authentication
+- 👥 Role-based access control
+
+<p align="center">
+  <strong>Built with React • TypeScript • FastAPI • PostgreSQL</strong>
+</p>
+
+<p align="center">
+  <strong>Powered by Code Morphix</strong>
+</p>
+
+---
 
 ---
 
