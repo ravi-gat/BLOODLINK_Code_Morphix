@@ -1,10 +1,29 @@
-node_modules
-*.env
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment variables
 .env
-.env.local
 .env.*
-.venv
-__pycache__
-*.pyc
-dist
-.pytest_cache
+!.env.example
+
+# Frontend
+node_modules/
+dist/
+.vite/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
