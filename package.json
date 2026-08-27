@@ -96,5 +96,6 @@
       "@tailwindcss/oxide",
       "esbuild"
     ]
-  }
+  },
+  "packageManager": "pnpm@9.15.4"
 }
