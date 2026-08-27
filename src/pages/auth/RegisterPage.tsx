@@ -1,6 +1,22 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Eye, EyeOff, Loader2, UserPlus, Mail, Lock, User, Phone, MapPin, Building2, Droplets, CheckCircle2, RefreshCw } from "lucide-react";
+import {
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  Loader2,
+  UserPlus,
+  Mail,
+  Lock,
+  User,
+  Phone,
+  MapPin,
+  Building2,
+  Droplets,
+  CheckCircle,
+  CheckCircle2,
+  RefreshCw
+} from "lucide-react";
 import { useAuthStore, getRoleDashboardPath } from "../../stores/useAuthStore";
 import { authApi } from "../../services/api";
 import type { UserRole, BloodGroup } from "../../types";

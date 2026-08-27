@@ -29,7 +29,11 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # ── CORS ──────────────────────────────────────────────────────
-    CORS_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:3000"]
+    CORS_ORIGINS: List[str] = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://bloodlink-code-morphix-beta.vercel.app",
+]
 
     # ── Security ──────────────────────────────────────────────────
     BCRYPT_ROUNDS: int = 12
