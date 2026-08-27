@@ -31,13 +31,20 @@ export async function api<T>(
 
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        ...(options.headers || {}),
-      },
-      ...options,
-    });
+  credentials: "include",
+  headers: {
+    "Content-Type": "application/json",
+    ...(localStorage.getItem("bloodlink_access_token")
+      ? {
+          Authorization: `Bearer ${localStorage.getItem(
+            "bloodlink_access_token"
+          )}`,
+        }
+      : {}),
+    ...(options.headers || {}),
+  },
+  ...options,
+});
   } catch {
     throw new ApiError(
       "Unable to connect to BloodLink server. Please try again.",
@@ -81,17 +88,31 @@ const HTTP_ERROR_MESSAGES: Record<number, string> = {
 // ── Typed API modules ─────────────────────────────────────────────────────────
 
 export const authApi = {
-  login: (email: string, password: string, role?: string) =>
-    api<ApiAuthResponse>("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password, role }),
-    }),
+ login: async (email: string, password: string, role?: string) => {
+  const result = await api<ApiAuthResponse>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password, role }),
+  });
 
-  register: (data: RegisterPayload) =>
-    api<ApiAuthResponse>("/auth/register", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
+  if (result.access_token) {
+    localStorage.setItem("bloodlink_access_token", result.access_token);
+  }
+
+  return result;
+},
+
+ register: async (data: RegisterPayload) => {
+  const result = await api<ApiAuthResponse>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+  if (result.access_token) {
+    localStorage.setItem("bloodlink_access_token", result.access_token);
+  }
+
+  return result;
+},
 
   verifyEmail: (token: string) =>
     api<{ success: boolean; message: string }>(`/auth/verify-email?token=${encodeURIComponent(token)}`),
@@ -102,10 +123,18 @@ export const authApi = {
       body: JSON.stringify({ email }),
     }),
 
-  logout: () =>
-    api<{ success: boolean; message: string }>("/auth/logout", {
-      method: "POST",
-    }),
+  logout: async () => {
+  try {
+    return await api<{ success: boolean; message: string }>(
+      "/auth/logout",
+      {
+        method: "POST",
+      }
+    );
+  } finally {
+    localStorage.removeItem("bloodlink_access_token");
+  }
+},
 
   me: () => api<ApiAuthResponse>("/auth/me"),
 
